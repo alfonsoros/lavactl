@@ -1,0 +1,13 @@
+Build and push image:
+  stage: build
+  script:
+    - version="$(cat VERSION)"
+    - if [ "$CI_BUILD_REF_NAME" != "master" ]
+    - then
+    -    version="$version-$(git rev-parse --short HEAD)"
+    - fi
+    - image_name=docker.web-of-systems.com/lava-ctl:$version
+    - docker build --build-arg http_proxy=$http_proxy --build-arg https_proxy=$http_proxy -t $image_name .
+    - docker push $image_name
+  tags:
+    - RAW
