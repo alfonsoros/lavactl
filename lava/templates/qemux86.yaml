@@ -1,0 +1,54 @@
+device_type: qemu
+job_name: qemu-x86-test
+
+timeouts:
+  job:
+    minutes: 60
+  action:
+    minutes: 10
+  connection:
+    minutes: 20
+
+priority: medium
+visibility: public
+
+context:
+  arch: i386
+
+actions:
+- deploy:
+    timeout:
+      minutes: 10
+    to: tmpfs
+    images:
+        kernel:
+          image_arg: -kernel {kernel} -append "console=ttyS0 root=/dev/hda rw"
+          url: {{ kernel_url }}
+        rootfs:
+          image_arg: -drive format=raw,file={rootfs}
+          url: {{ file_system_url }}
+          compression: gz
+    os: oe
+    root_partition: 1
+
+- boot:
+    method: qemu
+    timeout:
+      minutes: 20
+    media: tmpfs
+    prompts:
+    - "root@qemux86:"
+    auto_login:
+      login_prompt: "login:"
+      username: root
+
+- test:
+    failure_retry: 3
+    name: test
+    timeout:
+      minutes: 5
+    definitions:
+      - repository: git@code.siemens.com:webofsystems/ebs-tests.git
+        from: git
+        path: messaging_agent.yaml
+        name: messaging-agent
