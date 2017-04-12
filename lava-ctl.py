@@ -3,6 +3,8 @@
 
 from jinja2 import Environment, PackageLoader
 
+from lava.server.Storage import Storage
+
 def qemu_job(kernel_url, fs_url):
   env = Environment(loader=PackageLoader('lava', 'templates'))
   qemu = env.get_template('qemux86.yaml')
@@ -14,9 +16,9 @@ def qemu_job(kernel_url, fs_url):
 if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser()
-  parser.add_argument('kernel_url', help='URL to the Kernel')
-  parser.add_argument('filesystem_url', help='URL to the file system.')
+  parser.add_argument('kernel', help='URL to the Kernel')
+  parser.add_argument('--filesystem_url', help='URL to the file system.')
 
   args = parser.parse_args()
 
-  print qemu_job(args.kernel_url, args.filesystem_url)
+  Storage().upload(args.kernel)
