@@ -13,14 +13,7 @@ from exceptions import ImportError
 """
 
 class Storage(object):
-  def __init__(self):
-    try:
-      addr = os.environ['LAVA_STORAGE_FTP_ADDR']
-      usr =  os.environ['LAVA_STORAGE_FTP_USER']
-      pwd =  os.environ['LAVA_STORAGE_FTP_PASS']
-    except KeyError:
-      raise ImportError("lava.Storage", "Set LAVA_STORAGE_* env variables")
-
+  def __init__(self, addr, usr, pwd):
     self._transport = paramiko.Transport((addr, 2040))
     self._transport.connect(username=usr, password=pwd)
 

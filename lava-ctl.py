@@ -16,5 +16,4 @@ if __name__ == '__main__':
   config['filesystem'] = args.filesystem
 
   job = Job(config)
-
-  print job.definition()
+  job.submit()
