@@ -14,6 +14,7 @@ from exceptions import ImportError
 
 class Storage(object):
   def __init__(self, addr, usr, pwd):
+    self._server = addr
     self._transport = paramiko.Transport((addr, 2040))
     self._transport.connect(username=usr, password=pwd)
 
@@ -32,4 +33,4 @@ class Storage(object):
   def upload(self, localpath):
     name = os.path.basename(localpath)
     self._sftp.put(localpath, name)
-    return u'file:///lava-stuff/' + name
+    return u'http://%s:2041/lava-files/%s' % (self._server, name)
