@@ -7,7 +7,15 @@ Build and push image:
     -    version="$version-$(git rev-parse --short HEAD)"
     - fi
     - image_name=docker.web-of-systems.com/lava-ctl:$version
-    - docker build --build-arg http_proxy=$http_proxy --build-arg https_proxy=$http_proxy -t $image_name .
+    - 'docker build 
+          --build-arg http_proxy=$http_proxy 
+          --build-arg https_proxy=$http_proxy 
+          --build-arg user=$LAVA_USER 
+          --build-arg token=$LAVA_TOKEN
+          --build-arg master_addr=$LAVA_SERVER_ADDR
+          --build-arg ftp_user=$LAVA_STORAGE_FTP_USER
+          --build-arg ftp_pass=$LAVA_STORAGE_FTP_PASS
+          -t $image_name .'
     - docker push $image_name
   tags:
     - RAW
