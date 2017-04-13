@@ -2,7 +2,7 @@ Build and push image:
   stage: build
   script:
     - version="$(cat VERSION)"
-    - if [ "$CI_BUILD_REF_NAME" != "master" ]
+    - if [ "$(git branch)" != "master" ]
     - then
     -    version="$version-$(git rev-parse --short HEAD)"
     - fi
