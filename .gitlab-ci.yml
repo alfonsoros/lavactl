@@ -1,12 +1,7 @@
-Build and push image:
+docker-image:
   stage: build
   script:
-    - version="$(cat VERSION)"
-    - if [ "$(git branch)" != "master" ]
-    - then
-    -    version="$version-$(git rev-parse --short HEAD)"
-    - fi
-    - image_name=docker.web-of-systems.com/lava-ctl:$version
+    - 'IMAGE_NAME=docker.web-of-systems.com/lava-ctl'
     - 'docker build 
           --build-arg http_proxy=$http_proxy 
           --build-arg https_proxy=$http_proxy 
@@ -15,7 +10,14 @@ Build and push image:
           --build-arg master_addr=$LAVA_SERVER_ADDR
           --build-arg ftp_user=$LAVA_STORAGE_FTP_USER
           --build-arg ftp_pass=$LAVA_STORAGE_FTP_PASS
-          -t $image_name .'
-    - docker push $image_name
+          -t $IMAGE_NAME .'
+    - if [ "$CI_BUILD_REF_NAME" == "master" ]; then
+    -   'docker tag $IMAGE_NAME $IMAGE_NAME:$(cat VERSION)'
+    -   'docker push $IMAGE_NAME'
+    - else
+    -   'version="$(cat VERSION)-$(git rev-parse --short HEAD)"'
+    -   'docker tag $IMAGE_NAME $IMAGE_NAME:$version'
+    -   'docker push $IMAGE_NAME:$version'
+    - fi
   tags:
     - RAW
