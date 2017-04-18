@@ -1,5 +1,9 @@
 import os
 
+SLEEP = 5
+WAITING_TIMEOUT = 600
+RUNNING_TIMEOUT = 120
+
 lava_server = os.environ['LAVA_SERVER_ADDR']
 lava_port = 2041
 

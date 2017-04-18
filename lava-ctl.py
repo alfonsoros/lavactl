@@ -17,3 +17,4 @@ if __name__ == '__main__':
 
   job = Job(config)
   job.submit()
+  job.poll()
