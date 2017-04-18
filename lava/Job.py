@@ -7,18 +7,20 @@ import time
 import urllib2
 
 from jinja2 import Environment, PackageLoader
-from lava.config import default
 from lava.server.Storage import Storage
 from lava.server.interface import LavaRPC
 
 class Job(object):
   def __init__(self, config):
-    self._conf = config
+    self._lava_url = config.get('lava.server', 'url')
+    self._sleep = config.getint('lava.jobs', 'sleep')
+    self._running_timeout = config.getint('lava.jobs', 'running_timeout')
+    self._waiting_timeout = config.getint('lava.jobs', 'waiting_timeout')
     self._env = Environment(loader=PackageLoader('lava.devices', 'templates'))
 
-    with Storage(default.lava_server, default.lava_ftp_usr, default.lava_ftp_pwd) as ftp:
-      self._kernel_url = ftp.upload(self._conf['kernel'])
-      self._filesystem_url = ftp.upload(self._conf['filesystem'])
+    with Storage(config) as ftp:
+      self._kernel_url = ftp.upload(config.get('lava.files', 'kernel'))
+      self._filesystem_url = ftp.upload(config.get('lava.files', 'filesystem'))
 
     qemu = self._env.get_template('qemux86.yaml')
 
@@ -43,13 +45,13 @@ class Job(object):
       # count = number of times we loop waiting for the job to start
       count = 0
 
-      while wcount < default.WAITING_TIMEOUT and count < default.RUNNING_TIMEOUT:
+      while wcount < self._waiting_timeout and count < self._running_timeout:
         status = server.scheduler.job_status(self._jobid)
 
         if status['job_status'] == 'Complete':
             # Check the tests passed
-            response = urllib2.urlopen("http://%s:2041/results/%d/csv" %
-                (default.lava_server, self._jobid))
+            response = urllib2.urlopen("%s/results/%d/csv" %
+                (self._lava_url, self._jobid))
             tests = csv.DictReader(response.read().split('\r\n'))
 
             if all([test["result"] == "pass" for test in tests]):
@@ -60,14 +62,14 @@ class Job(object):
         elif status['job_status'] == 'Canceled' or status['job_status'] == 'Cancelling':
             exit(1)
         elif status['job_status'] == 'Submitted':
-            wcount += default.SLEEP
+            wcount += self._sleep
         elif status['job_status'] == 'Running':
-            count += default.SLEEP
+            count += self._sleep
         elif status['job_status'] == 'Incomplete':
             exit(1)
-        time.sleep(default.SLEEP)
+        time.sleep(self._sleep)
 
-      if wcount >= default.WAITING_TIMEOUT:
+      if wcount >= self._waiting_timeout:
         log.error("Queued timeout")
       else:
         log.error("Running timeout")
