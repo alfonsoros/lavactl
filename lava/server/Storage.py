@@ -3,25 +3,24 @@ import os
 import paramiko
 
 from exceptions import ImportError
-
-"""
-  The following environment variables are required:
-
-  LAVA_STORAGE_FTP_ADDR
-  LAVA_STORAGE_FTP_USER
-  LAVA_STORAGE_FTP_PASS
-"""
+from lava.config.default import DefaultConfig
 
 class Storage(object):
-  def __init__(self, addr, usr, pwd):
-    self._server = addr
-    self._transport = paramiko.Transport((addr, 2040))
-    self._transport.connect(username=usr, password=pwd)
+  def __init__(self, config=None):
+    if not config:
+      config = DefaultConfig()
 
+    server = config.get('lava.server', 'addr')
+    port = config.getint('lava.sftp', 'port')
+    usr = config.get('lava.sftp', 'user')
+    pwd = config.get('lava.sftp', 'pass')
+    self._transport = paramiko.Transport((server, port))
+    self._transport.connect(username=usr, password=pwd)
     self._sftp = paramiko.SFTPClient.from_transport(self._transport)
+    self._download_url = config.get('lava.server', 'files')
 
   def __str__(self):
-    return u'Lava master storage'
+    return u'Lava master ftp storage'
 
   def __enter__(self):
     return self
@@ -33,4 +32,4 @@ class Storage(object):
   def upload(self, localpath):
     name = os.path.basename(localpath)
     self._sftp.put(localpath, name)
-    return u'http://%s:2041/lava-files/%s' % (self._server, name)
+    return u'%s/%s' % (self._download_url, name)

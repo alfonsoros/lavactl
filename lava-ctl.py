@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from lava.Job import Job
+from lava.config.default import DefaultConfig
 
 if __name__ == '__main__':
   import argparse
@@ -11,9 +12,10 @@ if __name__ == '__main__':
 
   args = parser.parse_args()
 
-  config = {}
-  config['kernel'] = args.kernel
-  config['filesystem'] = args.filesystem
+  config = DefaultConfig()
+  config.add_section('lava.files')
+  config.set('lava.files', 'kernel', args.kernel)
+  config.set('lava.files', 'filesystem', args.filesystem)
 
   job = Job(config)
   job.submit()
