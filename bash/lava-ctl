@@ -3,7 +3,7 @@
 
 IMAGE_NAME='docker.web-of-systems.com/lava-ctl'
 
-if [[ $n -lt 3 ]]; then
+if [[ $# -lt 2 ]]; then
   docker pull $IMAGE_NAME
   docker run -t --rm $IMAGE_NAME $@
   exit 1
