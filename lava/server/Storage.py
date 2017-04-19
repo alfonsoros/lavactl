@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 import os
 import paramiko
+import gzip
+import shutil
+import logging
 
 from progress.bar import Bar
 from lava.config.default import DefaultConfig
 
 class Storage(object):
-  def __init__(self, config=None):
+  def __init__(self, config=None, logger=None):
     if not config:
       config = DefaultConfig()
+
+    self._log = logger.getChild('sftp') if logger else logging.getLogger('sftp')
 
     server = config.get('lava.server', 'addr')
     port = config.getint('lava.sftp', 'port')
@@ -29,16 +34,23 @@ class Storage(object):
     self._sftp.close()
     self._transport.close()
 
-  def upload(self, localpath):
+  def upload(self, path, compressed=False):
+    # Try to compress the file before uploading
+    if compressed and not path.endswith('.gz'):
+      self._log.info('Gzip the filesystem before uploading')
+      with open(path, 'rb') as f_in, gzip.open(path + '.gz', 'wb') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+      path = path + '.gz'
+
     # Some fancy progress bar
-    bar = Bar('Uploading %s' % os.path.basename(localpath))
+    bar = Bar('Uploading %s' % os.path.basename(path))
 
     def update_progress(current, total):
       bar.index = current
       bar.max = total
       bar.update()
 
-    name = os.path.basename(localpath)
-    self._sftp.put(localpath, name, callback=update_progress)
+    name = os.path.basename(path)
+    self._sftp.put(path, name, callback=update_progress)
     bar.finish()
     return u'%s/%s' % (self._download_url, name)

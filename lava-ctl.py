@@ -16,6 +16,10 @@ if __name__ == '__main__':
     with open('bash/lava-ctl', 'r') as f:
       sys.stdout.write(f.read())
       exit(0)
+  elif len(sys.argv) == 2 and sys.argv[1] == '--version':
+    with open('VERSION', 'r') as f:
+      sys.stdout.write(f.read())
+      exit(0)
 
   import argparse
   parser = argparse.ArgumentParser()
@@ -30,6 +34,7 @@ if __name__ == '__main__':
   parser.add_argument('-v', '--verbose', action='store_true', help='Show debug info')
 
   args = parser.parse_args()
+
 
   if args.config:
     config = ConfigParser()

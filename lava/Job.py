@@ -28,9 +28,10 @@ class Job(object):
     self._log.debug('Queued timeout:    %ds', self._waiting_timeout)
 
     self._log.info('Uploading files to FTP server')
-    with Storage(config) as ftp:
+    with Storage(config, self._log) as ftp:
       self._kernel_url = ftp.upload(config.get('lava.files', 'kernel'))
-      self._filesystem_url = ftp.upload(config.get('lava.files', 'filesystem'))
+      self._filesystem_url = ftp.upload(config.get('lava.files', 'filesystem'),
+          compressed=True)
 
     self._log.info('Generating job description')
     qemu = self._env.get_template('qemux86.yaml')
@@ -112,6 +113,6 @@ class Job(object):
 
       bar.finish()
 
-      if count >= self._waiting_timeout:
+      if count >= self._running_timeout:
         self._log.error("Running timeout")
         exit(1)
