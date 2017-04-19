@@ -85,7 +85,12 @@ class Job(object):
               (self._lava_url, self._jobid))
           tests = csv.DictReader(response.read().split('\r\n'))
 
-          if all([test["result"] == "pass" for test in tests]):
+          results = [test.get('result') for test in tests]
+
+          self._log.info("Test PASSED %d", results.count('pass'))
+          self._log.info("Test FAILED %d", results.count('fail'))
+
+          if all(result == "pass" for result in results):
             exit(0)
           else:
             exit(1)
