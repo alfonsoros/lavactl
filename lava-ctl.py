@@ -3,6 +3,7 @@
 
 import sys
 import os
+import logging
 from ConfigParser import ConfigParser
 
 from lava.Job import Job
@@ -20,6 +21,7 @@ if __name__ == '__main__':
   parser.add_argument('filesystem', help='Filepath to the File System.')
   parser.add_argument('--show-config', action='store_true', help='Print configuration')
   parser.add_argument('-c', '--config', dest='config', metavar='FILE', type=path_exists, help='Config file')
+  parser.add_argument('-v', '--verbose', action='store_true', help='Show debug info')
 
   args = parser.parse_args()
 
@@ -36,6 +38,14 @@ if __name__ == '__main__':
   if args.show_config:
     config.write(sys.stdout)
 
-  job = Job(config)
+  logging.basicConfig()
+  logger = logging.getLogger('lava')
+
+  if args.verbose:
+    logger.setLevel(logging.DEBUG)
+  else:
+    logger.setLevel(logging.INFO)
+
+  job = Job(config, logger=logger)
   job.submit()
   job.poll()
