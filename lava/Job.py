@@ -14,7 +14,7 @@ from lava.server.interface import LavaRPC
 
 class Job(object):
   def __init__(self, config, logger=None):
-    self._log = logger if logger else logging.getLogger('lava.job')
+    self._log = logger.getChild('job') if logger else logging.getLogger('lava.job')
 
     self._lava_url = config.get('lava.server', 'url')
     self._sleep = config.getint('lava.jobs', 'sleep')
@@ -22,17 +22,17 @@ class Job(object):
     self._waiting_timeout = config.getint('lava.jobs', 'waiting_timeout')
     self._env = Environment(loader=PackageLoader('lava.devices', 'templates'))
 
-    self._log.info('Lava URL:          %s', self._lava_url)
-    self._log.info('Waiting-loop time: %ds', self._sleep)
-    self._log.info('Running timemout:  %d', self._running_timeout)
-    self._log.info('Queued timeout:    %d', self._waiting_timeout)
+    self._log.debug('Lava URL:          %s', self._lava_url)
+    self._log.debug('Waiting-loop time: %ds', self._sleep)
+    self._log.debug('Running timemout:  %ds', self._running_timeout)
+    self._log.debug('Queued timeout:    %ds', self._waiting_timeout)
 
-    self._log.debug('Uploading files to FTP server')
+    self._log.info('Uploading files to FTP server')
     with Storage(config) as ftp:
       self._kernel_url = ftp.upload(config.get('lava.files', 'kernel'))
       self._filesystem_url = ftp.upload(config.get('lava.files', 'filesystem'))
 
-    self._log.debug('Generating job description')
+    self._log.info('Generating job description')
     qemu = self._env.get_template('qemux86.yaml')
     self._job_definition = qemu.render({
       'kernel_url' : self._kernel_url,
@@ -46,7 +46,8 @@ class Job(object):
   def submit(self):
     with LavaRPC() as server:
       self._jobid = server.scheduler.submit_job(self._job_definition)
-      self._log.debug('Submitted Job ID: %d', self._jobid)
+      self._log.info('Submitted Job ID: %d', self._jobid)
+      self._log.info('job url:\n\n%s/%s/%d\n', self._lava_url, 'scheduler/job', self._jobid)
 
   def poll(self):
     with LavaRPC() as server:
