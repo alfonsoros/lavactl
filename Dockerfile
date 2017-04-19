@@ -14,6 +14,7 @@ ENV LAVA_STORAGE_FTP_PASS=$ftp_pass
 
 RUN pip install jinja2 paramiko PyYAML progress
 
-ADD . /
+ADD . /lava-ctl
+WORKDIR /lava-ctl
 
 ENTRYPOINT [ "python", "./lava-ctl.py" ]
