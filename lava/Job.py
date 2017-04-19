@@ -6,6 +6,7 @@ import xmlrpclib
 import time
 import urllib2
 
+from progress.bar import Bar
 from jinja2 import Environment, PackageLoader
 from lava.server.Storage import Storage
 from lava.server.interface import LavaRPC
@@ -39,25 +40,29 @@ class Job(object):
   def poll(self):
     with LavaRPC() as server:
 
-      # wcount = number of times we loop while the job is running
-      wcount = 0
+      wcount = 0 # number of loops while the job is running
+      count = 0  # number of loops waiting for the job to start
 
-      # count = number of times we loop waiting for the job to start
-      count = 0
+      bar = Bar('Polling job %d' % self._jobid, max=self._running_timeout)
 
       while wcount < self._waiting_timeout and count < self._running_timeout:
         status = server.scheduler.job_status(self._jobid)
 
-        if status['job_status'] == 'Complete':
-            # Check the tests passed
-            response = urllib2.urlopen("%s/results/%d/csv" %
-                (self._lava_url, self._jobid))
-            tests = csv.DictReader(response.read().split('\r\n'))
+        bar.index = count
+        bar.update()
 
-            if all([test["result"] == "pass" for test in tests]):
-              exit(0)
-            else:
-              exit(1)
+        if status['job_status'] == 'Complete':
+          bar.finish()
+
+          # Check the tests passed
+          response = urllib2.urlopen("%s/results/%d/csv" %
+              (self._lava_url, self._jobid))
+          tests = csv.DictReader(response.read().split('\r\n'))
+
+          if all([test["result"] == "pass" for test in tests]):
+            exit(0)
+          else:
+            exit(1)
 
         elif status['job_status'] == 'Canceled' or status['job_status'] == 'Cancelling':
             exit(1)
@@ -67,6 +72,8 @@ class Job(object):
             count += self._sleep
         elif status['job_status'] == 'Incomplete':
             exit(1)
+
+        # Wait _sleep seconds
         time.sleep(self._sleep)
 
       if wcount >= self._waiting_timeout:
