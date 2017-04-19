@@ -4,12 +4,18 @@
 import sys
 import os
 import logging
-from ConfigParser import ConfigParser
 
+from ConfigParser import ConfigParser
+from pkg_resources import resource_filename
 from lava.Job import Job
 from lava.config.default import DefaultConfig
 
 if __name__ == '__main__':
+
+  if len(sys.argv) == 2 and sys.argv[1] == 'bash':
+    with open('bash/lava-ctl', 'r') as f:
+      sys.stdout.write(f.read())
+      exit(0)
 
   import argparse
   parser = argparse.ArgumentParser()

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# vi: set ft=sh :
+
+IMAGE_NAME='docker.web-of-systems.com/lava-ctl'
+
+if [[ $n -lt 3 ]]; then
+  docker pull $IMAGE_NAME
+  docker run -t --rm $IMAGE_NAME $@
+  exit 1
+fi
+
+# TODO: there must be a better way to pass the files to the container
+n=$(($#-2))
+filesystem="${@: -1}"
+kernel="${@: -2:1}"
+
+d1="$( cd "$( dirname "$filesystem" )" && pwd )"
+d2="$( cd "$( dirname "$kernel" )" && pwd )"
+
+if [[ $d1 != $d2 ]]; then
+  echo "kernel and filesystem must be on the same directory" >&2
+  exit 1
+fi
+
+prefix=/lava-files
+host_directory=$d1
+
+kernel="$prefix/$kernel"
+filesystem="$prefix/$filesystem"
+
+docker pull $IMAGE_NAME
+docker run -t --rm -v $host_directory:$prefix $IMAGE_NAME "${@: 1:$n}" "$kernel" "$filesystem"
