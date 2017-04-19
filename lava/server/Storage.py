@@ -2,7 +2,7 @@
 import os
 import paramiko
 
-from exceptions import ImportError
+from progress.bar import Bar
 from lava.config.default import DefaultConfig
 
 class Storage(object):
@@ -30,6 +30,15 @@ class Storage(object):
     self._transport.close()
 
   def upload(self, localpath):
+    # Some fancy progress bar
+    bar = Bar('Uploading %s' % os.path.basename(localpath))
+
+    def update_progress(current, total):
+      bar.index = current
+      bar.max = total
+      bar.update()
+
     name = os.path.basename(localpath)
-    self._sftp.put(localpath, name)
+    self._sftp.put(localpath, name, callback=update_progress)
+    bar.finish()
     return u'%s/%s' % (self._download_url, name)
