@@ -22,8 +22,8 @@ case you need a particular configuration, these are the settings available:
 
 ```ini
 [lava.server]
-addr // IP address or hostname of the lava master
-port // port of the lava http interface
+addr = hostname // IP address or hostname of the lava master
+port = 1234 // port of the lava http interface
 url = http://%(addr)s:%(port)s // leave this
 files = %(url)s/lava-files // http server url from where to get the images
 user = %(LAVA_USER)s // lava user
