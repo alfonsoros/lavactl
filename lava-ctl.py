@@ -27,8 +27,8 @@ if __name__ == '__main__':
   def path_exists(filepath):
     return filepath if os.path.exists(filepath) else parser.error("%s does not exists" % filepath)
 
-  parser.add_argument('kernel', required=False, help='Filepath to the Kernel.')
-  parser.add_argument('filesystem', required=False, help='Filepath to the File System.')
+  parser.add_argument('kernel', help='Filepath to the Kernel.')
+  parser.add_argument('filesystem', help='Filepath to the File System.')
   parser.add_argument('--show-config', action='store_true', help='Print configuration')
   parser.add_argument('-c', '--config', dest='config', metavar='FILE', type=path_exists, help='Config file')
   parser.add_argument('-v', '--verbose', action='store_true', help='Show debug info')
