@@ -6,7 +6,7 @@ import shutil
 import logging
 
 from progress.bar import Bar
-from lava.config.default import DefaultConfig
+from config.default import DefaultConfig
 
 class Storage(object):
   def __init__(self, config=None, logger=None):
