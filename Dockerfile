@@ -5,12 +5,16 @@ ARG token
 ARG master_addr
 ARG ftp_user
 ARG ftp_pass
+ARG atf_user
+ARG atf_pass
 
 ENV LAVA_SERVER_ADDR=$master_addr
 ENV LAVA_USER=$user
 ENV LAVA_TOKEN=$token
 ENV LAVA_STORAGE_FTP_USER=$ftp_user
 ENV LAVA_STORAGE_FTP_PASS=$ftp_pass
+ENV ATF_USER=$atf_user
+ENV ATF_PASS=$atf_pass
 
 RUN pip install jinja2 paramiko PyYAML progress
 
