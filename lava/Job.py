@@ -87,10 +87,20 @@ class Job(object):
 
     self._log.info('Generating job description')
     qemu = self._env.get_template('qemux86.yaml')
-    self._job_definition = qemu.render({
-      'kernel_url' : self._kernel_url,
-      'file_system_url' : self._filesystem_url,
-    })
+
+    # Template context
+    context = {}
+    context['kernel_url'] = self._kernel_url
+    context['file_system_url'] = self._filesystem_url
+
+    # Add inline test
+    if config.has_section('lava.test'):
+      context['has_test'] = True
+      with open(config.get('lava.test', 'test'), 'r') as test:
+        context['test_file'] = test.read()
+
+    self._job_definition = qemu.render(context)
+
 
   def definition(self):
     return self._job_definition

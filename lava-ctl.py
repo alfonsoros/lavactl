@@ -29,6 +29,7 @@ if __name__ == '__main__':
 
   parser.add_argument('--kernel', metavar='FILE', type=path_exists, help='kernel file.')
   parser.add_argument('--rootfs', metavar='FILE', type=path_exists, help='rootfs file.')
+  parser.add_argument('--test', metavar='FILE', type=path_exists, help='Lava test definition')
 
   parser.add_argument('--show-config', action='store_true', help='Print configuration')
   parser.add_argument('-c', '--config', metavar='FILE', type=path_exists, help='Config file')
@@ -60,6 +61,11 @@ if __name__ == '__main__':
     else:
       logger.error('--kernel and --rootfs must be specified together')
       exit(1)
+
+  # Lava test definition
+  if args.test:
+    config.add_section('lava.test')
+    config.set('lava.test', 'test', args.test)
 
   if args.show_config:
     config.write(sys.stdout)

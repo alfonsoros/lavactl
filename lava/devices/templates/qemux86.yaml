@@ -52,3 +52,10 @@ actions:
         from: git
         path: messaging_agent.yaml
         name: messaging-agent
+{% if has_test %}
+      - repository:
+{{ test_file|indent(10, True) }}
+        from: inline
+        name: agents-integration
+        path: inline/agents-integration.yaml
+{% endif %}
