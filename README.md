@@ -17,7 +17,7 @@ chmod +x lava-ctl
 
 ## Configuration file
 
-You can find the default configuration file in `lava/config/default.cfg`. In 
+You can find the default configuration file in `config/default.cfg`. In 
 case you need a particular configuration, these are the settings available:
 
 ```ini

@@ -16,6 +16,7 @@ class Job(object):
   def __init__(self, config, logger=None):
     self._log = logger.getChild('job') if logger else logging.getLogger('lava.job')
 
+    self._conf = config
     self._lava_url = config.get('lava.server', 'url')
     self._sleep = config.getint('lava.jobs', 'sleep')
     self._running_timeout = config.getint('lava.jobs', 'running_timeout')
@@ -45,13 +46,13 @@ class Job(object):
     return self._job_definition
 
   def submit(self):
-    with LavaRPC() as server:
+    with LavaRPC(self._conf) as server:
       self._jobid = server.scheduler.submit_job(self._job_definition)
       self._log.info('Submitted Job ID: %d', self._jobid)
       self._log.info('job url:\n\n%s/%s/%d\n', self._lava_url, 'scheduler/job', self._jobid)
 
   def poll(self):
-    with LavaRPC() as server:
+    with LavaRPC(self._conf) as server:
 
       count = 0
       status = server.scheduler.job_status(self._jobid).get('job_status')

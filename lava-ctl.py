@@ -8,7 +8,7 @@ import logging
 from ConfigParser import ConfigParser
 from pkg_resources import resource_filename
 from lava.Job import Job
-from lava.config.default import DefaultConfig
+from config.default import DefaultConfig
 
 if __name__ == '__main__':
 
