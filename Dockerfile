@@ -16,7 +16,7 @@ ENV LAVA_STORAGE_FTP_PASS=$ftp_pass
 ENV ATF_USER=$atf_user
 ENV ATF_PASS=$atf_pass
 
-RUN pip install jinja2 paramiko PyYAML progress
+RUN pip install jinja2 paramiko PyYAML progress artifactory
 
 ADD . /lava-ctl
 WORKDIR /lava-ctl

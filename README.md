@@ -17,7 +17,7 @@ chmod +x lava-ctl
 
 ## Configuration file
 
-You can find the default configuration file in `lava/config/default.cfg`. In 
+You can find the default configuration file in `config/default.cfg`. In 
 case you need a particular configuration, these are the settings available:
 
 ```ini
@@ -38,12 +38,20 @@ port = 2040 // sftp port (same as ssh usually)
 sleep = 5 // waiting time on each polling loop iteration
 waiting_timeout = 600 // timeout when waiting in the queue
 running_timeout = 120 // timeout when the job is running
+
+[artifactory]
+user = %(ATF_USER)s
+pass = %(ATF_PASS)s
+server = https://wosatf.ct.siemens.com/artifactory
+latest = wos-images-snapshot/ses-qemux86-devel-EMBS-P-0.4-r1-92-g3e76cfc
+kernel = bzImage-qemux86.bin
+rootfs = ses-image-devel-qemux86.ext4
 ```
 
 You can specify you configuration file using the `-c` option. For example:
 
 ```
-lava-ctl -c /path/to/my/config.cfg kernel.bin filesystem.ext4.gz
+lava-ctl -c /path/to/my/config.cfg --kernel kernel.bin --rootfs filesystem.ext4.gz
 ```
 
 ## Submitting a LAVA job
@@ -51,7 +59,7 @@ lava-ctl -c /path/to/my/config.cfg kernel.bin filesystem.ext4.gz
 You can submit a test job with
 
 ```bash
-lava-ctl -v /path/to/kernel.bin /path/to/filesystem.ext4.gz
+lava-ctl -v --kernel /path/to/kernel.bin --rootfs /path/to/filesystem.ext4.gz
 ```
 
 ## Debugging
@@ -61,5 +69,5 @@ trouble, you can show the configuration used by the App with the
 `--show-config` option:
 
 ```
-lava-ctl --show-config kernel.bin filesystem.ext4.gz
+lava-ctl --show-config --kernel kernel.bin --rootfs filesystem.ext4.gz
 ```
