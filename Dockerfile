@@ -12,7 +12,7 @@ ENV LAVA_TOKEN=$token
 ENV LAVA_STORAGE_FTP_USER=$ftp_user
 ENV LAVA_STORAGE_FTP_PASS=$ftp_pass
 
-RUN pip install jinja2 paramiko PyYAML progress
+RUN pip install jinja2 paramiko PyYAML progress artifactory
 
 ADD . /lava-ctl
 WORKDIR /lava-ctl

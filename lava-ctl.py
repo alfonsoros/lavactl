@@ -51,13 +51,14 @@ if __name__ == '__main__':
   else:
     config = DefaultConfig()
 
+  # Test provided image
   if args.kernel or args.rootfs:
     if args.kernel and args.rootfs and args.kernel != args.rootfs:
       config.add_section('lava.files')
       config.set('lava.files', 'kernel', args.kernel)
       config.set('lava.files', 'filesystem', args.rootfs)
     else:
-      logger.error("--kernel and --rootfs must be specified together")
+      logger.error('--kernel and --rootfs must be specified together')
       exit(1)
 
   if args.show_config:

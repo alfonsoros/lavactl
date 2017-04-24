@@ -6,9 +6,11 @@ import xmlrpclib
 import time
 import urllib2
 import logging
+import tempfile
 
 from progress.bar import Bar
 from jinja2 import Environment, PackageLoader
+from artifactory import ArtifactoryPath
 from lava.server.Storage import Storage
 from lava.server.interface import LavaRPC
 
@@ -28,11 +30,60 @@ class Job(object):
     self._log.debug('Running timemout:  %ds', self._running_timeout)
     self._log.debug('Queued timeout:    %ds', self._waiting_timeout)
 
-    self._log.info('Uploading files to FTP server')
-    with Storage(config, self._log) as ftp:
-      self._kernel_url = ftp.upload(config.get('lava.files', 'kernel'))
-      self._filesystem_url = ftp.upload(config.get('lava.files', 'filesystem'),
-          compressed=True)
+    if config.has_section('lava.files'):
+      self._log.info('Uploading files to FTP server')
+      with Storage(config, self._log) as ftp:
+        self._kernel_url = ftp.upload(config.get('lava.files', 'kernel'))
+        self._filesystem_url = ftp.upload(config.get('lava.files', 'filesystem'),
+            compressed=True)
+        self._log.debug('Kernel URL:        %ds', self._kernel_url)
+        self._log.debug('Rootfs URL:        %ds', self._filesystem_url)
+
+    # Test latest artifactory image
+    else:
+      atf = config.get('artifactory', 'server')
+      latest = config.get('artifactory', 'latest')
+      kernel = config.get('artifactory', 'kernel')
+      rootfs = config.get('artifactory', 'rootfs')
+
+      atfuser = config.get('artifactory', 'user')
+      atfpass = config.get('artifactory', 'pass')
+      atfauth = (atfuser, atfpass)
+
+      atf_kernel = "%s/%s/%s" % (atf, latest, kernel)
+      atf_rootfs = "%s/%s/%s" % (atf, latest, rootfs)
+
+      local_kernel = open(kernel, 'wb')
+      local_rootfs = open(rootfs, 'wb')
+
+      with Storage(config, self._log) as ftp:
+
+        self._log.info('Downloading latest image from artifactory')
+
+        file = ArtifactoryPath(atf_kernel, auth=atfauth, verify=False)
+        with file.open() as k:
+          local_kernel.write(k.read())
+
+        file = ArtifactoryPath(atf_rootfs, auth=atfauth, verify=False)
+        with file.open() as r:
+          local_rootfs.write(r.read())
+
+        local_kernel.seek(0)
+        local_rootfs.seek(0)
+
+        self._kernel_url = ftp.upload(local_kernel.name)
+        self._filesystem_url = ftp.upload(local_rootfs.name, compressed=True)
+        if not self._filesystem_url.endswith('.gz'):
+          self._filesystem_url = self._filesystem_url + '.gz'
+
+        self._log.debug('Kernel URL:        %s', self._kernel_url)
+        self._log.debug('Rootfs URL:        %s', self._filesystem_url)
+
+      local_kernel.close()
+      local_rootfs.close()
+
+      os.remove(local_kernel.name)
+      os.remove(local_rootfs.name)
 
     self._log.info('Generating job description')
     qemu = self._env.get_template('qemux86.yaml')
@@ -40,7 +91,6 @@ class Job(object):
       'kernel_url' : self._kernel_url,
       'file_system_url' : self._filesystem_url,
     })
-
 
   def definition(self):
     return self._job_definition
