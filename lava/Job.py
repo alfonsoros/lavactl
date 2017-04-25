@@ -34,10 +34,10 @@ class Job(object):
       self._log.info('Uploading files to FTP server')
       with Storage(config, self._log) as ftp:
         self._kernel_url = ftp.upload(config.get('lava.files', 'kernel'))
-        self._filesystem_url = ftp.upload(config.get('lava.files', 'filesystem'),
+        self._rootfs_url = ftp.upload(config.get('lava.files', 'rootfs'),
             compressed=True)
         self._log.debug('Kernel URL:        %ds', self._kernel_url)
-        self._log.debug('Rootfs URL:        %ds', self._filesystem_url)
+        self._log.debug('Rootfs URL:        %ds', self._rootfs_url)
 
     # Test latest artifactory image
     else:
@@ -72,12 +72,12 @@ class Job(object):
         local_rootfs.seek(0)
 
         self._kernel_url = ftp.upload(local_kernel.name)
-        self._filesystem_url = ftp.upload(local_rootfs.name, compressed=True)
-        if not self._filesystem_url.endswith('.gz'):
-          self._filesystem_url = self._filesystem_url + '.gz'
+        self._rootfs_url = ftp.upload(local_rootfs.name, compressed=True)
+        if not self._rootfs_url.endswith('.gz'):
+          self._rootfs_url = self._rootfs_url + '.gz'
 
         self._log.debug('Kernel URL:        %s', self._kernel_url)
-        self._log.debug('Rootfs URL:        %s', self._filesystem_url)
+        self._log.debug('Rootfs URL:        %s', self._rootfs_url)
 
       local_kernel.close()
       local_rootfs.close()
@@ -91,7 +91,7 @@ class Job(object):
     # Template context
     context = {}
     context['kernel_url'] = self._kernel_url
-    context['file_system_url'] = self._filesystem_url
+    context['rootfs_url'] = self._rootfs_url
 
     # Add inline test
     if config.has_section('lava.test'):

@@ -15,6 +15,48 @@ chmod +x lava-ctl
 ./lava-ctl --help
 ```
 
+## Submitting a LAVA job
+
+You can submit a test job with
+
+```bash
+lava-ctl --kernel /path/to/kernel.bin --rootfs /path/to/filesystem.ext4.gz
+```
+
+## Testing a LAVA Test
+
+It might be the case that you are developing a test to be run on the images, in 
+that case, you can submit a test job to try your test on the latest image of 
+in the artifactory. You will need to specify 2 things, the git URL of the 
+repository containing the test and the name of the test file. Optionally you 
+can also specify the revision of the test.
+
+In order to have an 'easy' way to specify these 3 things as a command line
+argument, we have decided to concatenate these 3 in a string joined by `#`
+characters in the following order:
+
+```
+git@repository.com/test/repo.git#smoke-tests.yaml#12345678
+```
+
+#### Example
+
+Here is an example on how the integration test are evaluated:
+
+```bash
+lava-ctl --test-repo git@code.siemens.com:iot/device-integration-test.git#agents-integration.yaml#a3e2b765
+```
+
+## Debugging
+
+This image uses environment variables for the configuration. In case of 
+trouble, you can show the configuration used by the App with the 
+`--debug` option:
+
+```
+lava-ctl --debug --kernel kernel.bin --rootfs filesystem.ext4.gz
+```
+
 ## Configuration file
 
 You can find the default configuration file in `config/default.cfg`. In 
@@ -52,22 +94,4 @@ You can specify you configuration file using the `-c` option. For example:
 
 ```
 lava-ctl -c /path/to/my/config.cfg --kernel kernel.bin --rootfs filesystem.ext4.gz
-```
-
-## Submitting a LAVA job
-
-You can submit a test job with
-
-```bash
-lava-ctl -v --kernel /path/to/kernel.bin --rootfs /path/to/filesystem.ext4.gz
-```
-
-## Debugging
-
-This image uses environment variables for the configuration. In case of 
-trouble, you can show the configuration used by the App with the 
-`--show-config` option:
-
-```
-lava-ctl --show-config --kernel kernel.bin --rootfs filesystem.ext4.gz
 ```

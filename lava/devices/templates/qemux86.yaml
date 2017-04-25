@@ -26,7 +26,7 @@ actions:
           url: {{ kernel_url }}
         rootfs:
           image_arg: -drive format=raw,file={rootfs}
-          url: {{ file_system_url }}
+          url: {{ rootfs_url }}
           compression: gz
     os: oe
     root_partition: 1
