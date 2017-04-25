@@ -8,6 +8,7 @@ import logging
 from ConfigParser import ConfigParser
 from pkg_resources import resource_filename
 from lava.Job import Job
+from lava.tests import Test
 from config.default import DefaultConfig
 
 if __name__ == '__main__':
@@ -16,6 +17,7 @@ if __name__ == '__main__':
     with open('bash/lava-ctl', 'r') as f:
       sys.stdout.write(f.read())
       exit(0)
+
   elif len(sys.argv) == 2 and sys.argv[1] == '--version':
     with open('VERSION', 'r') as f:
       sys.stdout.write(f.read())
@@ -29,7 +31,9 @@ if __name__ == '__main__':
 
   parser.add_argument('--kernel', metavar='FILE', type=path_exists, help='kernel file.')
   parser.add_argument('--rootfs', metavar='FILE', type=path_exists, help='rootfs file.')
-  parser.add_argument('--test', metavar='FILE', type=path_exists, help='Lava test definition')
+
+  parser.add_argument('--test-repo', dest='test_repos', metavar='URL', action='append',
+                      help='git url for test repository')
 
   parser.add_argument('--show-config', action='store_true', help='Print configuration')
   parser.add_argument('-c', '--config', metavar='FILE', type=path_exists, help='Config file')
@@ -62,10 +66,10 @@ if __name__ == '__main__':
       logger.error('--kernel and --rootfs must be specified together')
       exit(1)
 
-  # Lava test definition
-  if args.test:
+  # Lava tests
+  if args.test_repos:
     config.add_section('lava.test')
-    config.set('lava.test', 'test', args.test)
+    config.set('lava.test', 'repos', [Test(repo) for repo in args.test_repos])
 
   if args.show_config:
     config.write(sys.stdout)

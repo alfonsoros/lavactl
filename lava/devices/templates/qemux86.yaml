@@ -42,20 +42,20 @@ actions:
       login_prompt: "login:"
       username: root
 
+{% if test %}
 - test:
     failure_retry: 3
     name: test
     timeout:
       minutes: 5
     definitions:
-      - repository: git@code.siemens.com:webofsystems/ebs-tests.git
+{% for repo in test_repos %}
+      - repository: {{ repo.repo }}
         from: git
-        path: messaging_agent.yaml
-        name: messaging-agent
-{% if has_test %}
-      - repository:
-{{ test_file|indent(10, True) }}
-        from: inline
-        name: agents-integration
-        path: inline/agents-integration.yaml
+        path: {{ repo.name }}.yaml
+        name: {{ repo.name }}
+        {% if repo.revision -%}
+        revision: {{ repo.revision }}
+        {% endif %}
+{% endfor %}
 {% endif %}

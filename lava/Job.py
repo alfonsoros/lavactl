@@ -95,13 +95,12 @@ class Job(object):
 
     # Add inline test
     if config.has_section('lava.test'):
-      context['has_test'] = True
-      with open(config.get('lava.test', 'test'), 'r') as test:
-        context['test_file'] = test.read()
+      context['test'] = True
+      context['test_repos'] = config.get('lava.test', 'repos')
 
     self._job_definition = qemu.render(context)
 
-
+  @property
   def definition(self):
     return self._job_definition
 
