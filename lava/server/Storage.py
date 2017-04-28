@@ -14,11 +14,13 @@ class Storage(object):
       config = DefaultConfig()
 
     self._log = logger.getChild('sftp') if logger else logging.getLogger('sftp')
+    self._log.progress_bar = config.getboolean('logging', 'progress-bars')
 
     server = config.get('lava.server', 'addr')
     port = config.getint('lava.sftp', 'port')
     usr = config.get('lava.sftp', 'user')
     pwd = config.get('lava.sftp', 'pass')
+
     self._transport = paramiko.Transport((server, port))
     self._transport.connect(username=usr, password=pwd)
     self._sftp = paramiko.SFTPClient.from_transport(self._transport)
@@ -49,6 +51,9 @@ class Storage(object):
       bar.index = current
       bar.max = total
       bar.update()
+
+    if not self._log.progress_bar:
+      update_progress = None
 
     name = os.path.basename(path)
     self._sftp.put(path, name, callback=update_progress)

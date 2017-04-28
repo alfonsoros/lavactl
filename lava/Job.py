@@ -16,7 +16,9 @@ from lava.server.interface import LavaRPC
 
 class Job(object):
   def __init__(self, config, logger=None):
+
     self._log = logger.getChild('job') if logger else logging.getLogger('lava.job')
+    self._log.progress_bar = config.getboolean('logging', 'progress-bars')
 
     self._conf = config
     self._lava_url = config.get('lava.server', 'url')
@@ -122,6 +124,7 @@ class Job(object):
       while status == 'Submitted' and count < self._waiting_timeout:
         bar.index = count
         bar.update()
+
         count += self._sleep
         time.sleep(self._sleep)
         status = server.scheduler.job_status(self._jobid).get('job_status')

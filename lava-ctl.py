@@ -51,6 +51,7 @@ if __name__ == '__main__':
 
   parser.add_argument('--debug', action='store_true', help='show debug info')
   parser.add_argument('--version', action='store_true', help='print version')
+  parser.add_argument('--no-progress-bars', action='store_true', help='skip progress bars.')
 
   args = parser.parse_args()
 
@@ -65,6 +66,9 @@ if __name__ == '__main__':
 
   # Init configuration
   config = load_config(args.config)
+
+  config.add_section('logging')
+  config.set('logging', 'progress-bars', str(not args.no_progress_bars))
 
   # Test provided image
   if args.kernel or args.rootfs:
