@@ -57,5 +57,11 @@ actions:
         {% if repo.revision -%}
         revision: {{ repo.revision }}
         {% endif %}
+        {% if repo.params %}
+        parameters:
+            {% for param in repo.params %}
+            "{{ param.key }}": "{{ param.value }}"
+            {% endfor %}
+        {% endif %}
 {% endfor %}
 {% endif %}

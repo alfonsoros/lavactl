@@ -47,6 +47,9 @@ if __name__ == '__main__':
   parser.add_argument('--test-repo', dest='test_repos', metavar='URL', action='append',
                       help='git url for test repository')
 
+  parser.add_argument('--test-param', dest='test_params', metavar='KEY=VALUE',
+                      action='append', help='parameter to make available to the tests')
+
   parser.add_argument('-c', '--config', metavar='FILE', type=path_exists, help='config file')
 
   parser.add_argument('--debug', action='store_true', help='show debug info')
@@ -83,7 +86,11 @@ if __name__ == '__main__':
   # Lava tests
   if args.test_repos:
     config.add_section('lava.test')
-    config.set('lava.test', 'repos', [Test(repo) for repo in args.test_repos])
+
+    if args.test_params:
+      config.set('lava.test', 'repos', [Test(repo, args.test_params) for repo in args.test_repos])
+    else:
+      config.set('lava.test', 'repos', [Test(repo) for repo in args.test_repos])
 
   if args.debug:
     logger.debug('lava-ctl configuration')
