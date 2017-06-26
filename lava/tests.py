@@ -14,7 +14,7 @@ class Test(object):
   where the revision is optional.
 
   """
-  def __init__(self, uri):
+  def __init__(self, uri, params=None):
     parts = uri.split('#')
     if len(parts) == 3:
       self._uri, self._name, self._rev = parts
@@ -22,10 +22,12 @@ class Test(object):
       self._uri, self._name = parts
       self._rev = None
     else:
-      raise AttributeError('Missing parameters in LAVA test %s', uri)
+      raise AttributeError('Wrong URI structure in LAVA test %s', uri)
 
     if self._name.endswith('.yaml'):
       self._name = self._name.replace('.yaml', '')
+
+    self._params = [TestParam(param) for param in params]
 
   @property
   def repo(self):
@@ -38,3 +40,23 @@ class Test(object):
   @property
   def revision(self):
     return self._rev
+
+  @property
+  def params(self):
+    return self._params
+
+class TestParam(object):
+  def __init__(self, param):
+    parts = param.split('=')
+    if len(parts) == 2:
+      self._key, self._value = parts
+    else:
+      raise AttributeError('Wrong param format in test param %s', param)
+
+  @property
+  def key(self):
+    return self._key
+
+  @property
+  def value(self):
+    return self._value
