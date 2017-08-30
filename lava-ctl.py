@@ -6,8 +6,7 @@ import os
 import logging
 
 from ConfigParser import ConfigParser
-from pkg_resources import resource_filename
-from lava.Job import Job
+from lava.jobs import Job
 from lava.tests import Test
 from config.default import DefaultConfig
 
