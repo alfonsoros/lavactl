@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import sys
 import os
 import csv
 import xmlrpclib
@@ -7,6 +8,7 @@ import time
 import urllib2
 import logging
 import tempfile
+import yaml
 
 from progress.bar import Bar
 from jinja2 import Environment, PackageLoader
@@ -14,168 +16,233 @@ from artifactory import ArtifactoryPath
 from lava.server.Storage import Storage
 from lava.server.interface import LavaRPC
 
+
+class JobDefinition(object):
+    """LAVA Job Definition
+
+    This class can contain the complete definition of a LAVA job. This
+    information is stored in a structure that is serializable in YAML format
+    which can later be sent to the LAVA server.
+
+    Currently this class can be initialized from a YAML file.
+
+    """
+
+    def __init__(self, filename=None, *args, **kwargs):
+        """Parse and store the LAVA job definition.
+
+        Args:
+            filename (str): Path to the input file
+
+        """
+        self.logger = logging.getLogger(__name__)
+
+        # Construct from a file path
+        if filename:
+            with open(filename, 'rt') as f:
+                content = f.read()
+
+                # YAML format
+                try:
+                    self._yaml = yaml.load(content)
+                    self.logger.info("LAVA Job definition loaded")
+                except yaml.YAMLError:
+                    self.logger.error(
+                        "Incorrect YAML format in file name %s", filename)
+                    self._yaml = yaml.load("")
+        else:
+            self.logger.error("Couldn't load LAVA job definition")
+            self._yaml = yaml.load("")
+
+    def get(self, key):
+        """Get te value associated to the input key in the job configuration"""
+        try:
+            # solve keys encoded using 'dot' notation
+            return reduce(lambda c, k: c[k], key.split('.'), self._yaml)
+        except KeyError:
+            self.logger.error("Missing key %s in LAVA job description", key)
+        except:
+            self.logger.error("Incorrect LAVA Job definition")
+        return None
+
+    def __repr__(self):
+        return yaml.dump(self._yaml)
+
+
 class Job(object):
-  def __init__(self, config, logger=None):
+    """Lava Job
 
-    self._log = logger.getChild('job') if logger else logging.getLogger('lava.job')
-    self._log.progress_bar = config.getboolean('logging', 'progress-bars')
+    """
 
-    self._conf = config
-    self._lava_url = config.get('lava.server', 'url')
-    self._sleep = config.getint('lava.jobs', 'sleep')
-    self._running_timeout = config.getint('lava.jobs', 'running_timeout')
-    self._waiting_timeout = config.getint('lava.jobs', 'waiting_timeout')
-    self._env = Environment(loader=PackageLoader('lava.devices', 'templates'))
+    def __init__(self, config, logger=None):
 
-    self._log.debug('Lava URL:          %s', self._lava_url)
-    self._log.debug('Waiting-loop time: %ds', self._sleep)
-    self._log.debug('Running timemout:  %ds', self._running_timeout)
-    self._log.debug('Queued timeout:    %ds', self._waiting_timeout)
+        self._log = logger.getChild(
+            'job') if logger else logging.getLogger('lava.job')
+        self._log.progress_bar = config.getboolean('logging', 'progress-bars')
 
-    if config.has_section('lava.files'):
-      self._log.info('Uploading files to FTP server')
-      with Storage(config, self._log) as ftp:
-        self._kernel_url = ftp.upload(config.get('lava.files', 'kernel'))
-        self._rootfs_url = ftp.upload(config.get('lava.files', 'rootfs'),
-            compressed=True)
-        self._log.debug('Kernel URL:        %ds', self._kernel_url)
-        self._log.debug('Rootfs URL:        %ds', self._rootfs_url)
+        self._conf = config
+        self._lava_url = config.get('lava.server', 'url')
+        self._sleep = config.getint('lava.jobs', 'sleep')
+        self._running_timeout = config.getint('lava.jobs', 'running_timeout')
+        self._waiting_timeout = config.getint('lava.jobs', 'waiting_timeout')
+        self._env = Environment(
+            loader=PackageLoader('lava.devices', 'templates'))
 
-    # Test latest artifactory image
-    else:
-      atf = config.get('artifactory', 'server')
-      latest = config.get('artifactory', 'latest')
-      kernel = config.get('artifactory', 'kernel')
-      rootfs = config.get('artifactory', 'rootfs')
+        self._log.debug('Lava URL:          %s', self._lava_url)
+        self._log.debug('Waiting-loop time: %ds', self._sleep)
+        self._log.debug('Running timemout:  %ds', self._running_timeout)
+        self._log.debug('Queued timeout:    %ds', self._waiting_timeout)
 
-      atfuser = config.get('artifactory', 'user')
-      atfpass = config.get('artifactory', 'pass')
-      atfauth = (atfuser, atfpass)
+        if config.has_section('lava.files'):
+            self._log.info('Uploading files to FTP server')
+            with Storage(config, self._log) as ftp:
+                self._kernel_url = ftp.upload(
+                    config.get('lava.files', 'kernel'))
+                self._rootfs_url = ftp.upload(config.get('lava.files', 'rootfs'),
+                                              compressed=True)
+                self._log.debug('Kernel URL:        %ds', self._kernel_url)
+                self._log.debug('Rootfs URL:        %ds', self._rootfs_url)
 
-      atf_kernel = "%s/%s/%s" % (atf, latest, kernel)
-      atf_rootfs = "%s/%s/%s" % (atf, latest, rootfs)
+        # Test latest artifactory image
+        else:
+            atf = config.get('artifactory', 'server')
+            latest = config.get('artifactory', 'latest')
+            kernel = config.get('artifactory', 'kernel')
+            rootfs = config.get('artifactory', 'rootfs')
 
-      local_kernel = open(kernel, 'wb')
-      local_rootfs = open(rootfs, 'wb')
+            atfuser = config.get('artifactory', 'user')
+            atfpass = config.get('artifactory', 'pass')
+            atfauth = (atfuser, atfpass)
 
-      with Storage(config, self._log) as ftp:
+            atf_kernel = "%s/%s/%s" % (atf, latest, kernel)
+            atf_rootfs = "%s/%s/%s" % (atf, latest, rootfs)
 
-        self._log.info('Downloading latest image from artifactory')
+            local_kernel = open(kernel, 'wb')
+            local_rootfs = open(rootfs, 'wb')
 
-        file = ArtifactoryPath(atf_kernel, auth=atfauth, verify=False)
-        with file.open() as k:
-          local_kernel.write(k.read())
+            with Storage(config, self._log) as ftp:
 
-        file = ArtifactoryPath(atf_rootfs, auth=atfauth, verify=False)
-        with file.open() as r:
-          local_rootfs.write(r.read())
+                self._log.info('Downloading latest image from artifactory')
 
-        local_kernel.seek(0)
-        local_rootfs.seek(0)
+                file = ArtifactoryPath(atf_kernel, auth=atfauth, verify=False)
+                with file.open() as k:
+                    local_kernel.write(k.read())
 
-        self._kernel_url = ftp.upload(local_kernel.name)
-        self._rootfs_url = ftp.upload(local_rootfs.name, compressed=True)
-        if not self._rootfs_url.endswith('.gz'):
-          self._rootfs_url = self._rootfs_url + '.gz'
+                file = ArtifactoryPath(atf_rootfs, auth=atfauth, verify=False)
+                with file.open() as r:
+                    local_rootfs.write(r.read())
 
-        self._log.debug('Kernel URL:        %s', self._kernel_url)
-        self._log.debug('Rootfs URL:        %s', self._rootfs_url)
+                local_kernel.seek(0)
+                local_rootfs.seek(0)
 
-      local_kernel.close()
-      local_rootfs.close()
+                self._kernel_url = ftp.upload(local_kernel.name)
+                self._rootfs_url = ftp.upload(
+                    local_rootfs.name, compressed=True)
+                if not self._rootfs_url.endswith('.gz'):
+                    self._rootfs_url = self._rootfs_url + '.gz'
 
-      os.remove(local_kernel.name)
-      os.remove(local_rootfs.name)
+                self._log.debug('Kernel URL:        %s', self._kernel_url)
+                self._log.debug('Rootfs URL:        %s', self._rootfs_url)
 
-    self._log.info('Generating job description')
-    qemu = self._env.get_template('qemux86.yaml')
+            local_kernel.close()
+            local_rootfs.close()
 
-    # Template context
-    context = {}
-    context['kernel_url'] = self._kernel_url
-    context['rootfs_url'] = self._rootfs_url
+            os.remove(local_kernel.name)
+            os.remove(local_rootfs.name)
 
-    # Add inline test
-    if config.has_section('lava.test'):
-      context['test'] = True
-      context['test_repos'] = config.get('lava.test', 'repos')
+        self._log.info('Generating job description')
+        qemu = self._env.get_template('qemux86.yaml')
 
-    self._job_definition = qemu.render(context)
+        # Template context
+        context = {}
+        context['kernel_url'] = self._kernel_url
+        context['rootfs_url'] = self._rootfs_url
 
-  @property
-  def definition(self):
-    return self._job_definition
+        # Add inline test
+        if config.has_section('lava.test'):
+            context['test'] = True
+            context['test_repos'] = config.get('lava.test', 'repos')
 
-  def submit(self):
-    with LavaRPC(self._conf) as server:
-      self._jobid = server.scheduler.submit_job(self._job_definition)
-      self._log.info('Submitted Job ID: %d', self._jobid)
-      self._log.info('job url:\n\n%s/%s/%d\n', self._lava_url, 'scheduler/job', self._jobid)
+        self._job_definition = qemu.render(context)
 
-  def poll(self):
-    with LavaRPC(self._conf) as server:
+    @property
+    def definition(self):
+        return self._job_definition
 
-      count = 0
-      status = server.scheduler.job_status(self._jobid).get('job_status')
+    def submit(self):
+        with LavaRPC(self._conf) as server:
+            self._jobid = server.scheduler.submit_job(self._job_definition)
+            self._log.info('Submitted Job ID: %d', self._jobid)
+            self._log.info('job url:\n\n%s/%s/%d\n',
+                           self._lava_url, 'scheduler/job', self._jobid)
 
-      # Wait while the job is Queued
-      bar = Bar('Job %d: waiting in queue ' % self._jobid,
-          max=self._waiting_timeout, suffix='%(index)d / %(max)d seconds')
-      while status == 'Submitted' and count < self._waiting_timeout:
-        bar.index = count
-        bar.update()
+    def poll(self):
+        with LavaRPC(self._conf) as server:
 
-        count += self._sleep
-        time.sleep(self._sleep)
-        status = server.scheduler.job_status(self._jobid).get('job_status')
+            count = 0
+            status = server.scheduler.job_status(self._jobid).get('job_status')
 
-      # Job didn't start
-      if count >= self._waiting_timeout:
-        self._log.error('Waiting timeout for queued Job-ID %d', self._jobid)
-        exit(1)
+            # Wait while the job is Queued
+            bar = Bar('Job %d: waiting in queue ' % self._jobid,
+                      max=self._waiting_timeout, suffix='%(index)d / %(max)d seconds')
+            while status == 'Submitted' and count < self._waiting_timeout:
+                bar.index = count
+                bar.update()
 
-      count = 0
-      while count < self._running_timeout:
-        bar.message = 'Job %d: %s' % (self._jobid, status)
-        bar.index = count
-        bar.max = self._running_timeout
-        bar.update()
+                count += self._sleep
+                time.sleep(self._sleep)
+                status = server.scheduler.job_status(
+                    self._jobid).get('job_status')
 
-        if status == 'Complete':
-          bar.finish()
+            # Job didn't start
+            if count >= self._waiting_timeout:
+                self._log.error(
+                    'Waiting timeout for queued Job-ID %d', self._jobid)
+                exit(1)
 
-          # Check the tests passed
-          response = urllib2.urlopen("%s/results/%d/csv" %
-              (self._lava_url, self._jobid))
-          tests = csv.DictReader(response.read().split('\r\n'))
+            count = 0
+            while count < self._running_timeout:
+                bar.message = 'Job %d: %s' % (self._jobid, status)
+                bar.index = count
+                bar.max = self._running_timeout
+                bar.update()
 
-          results = [test.get('result') for test in tests]
+                if status == 'Complete':
+                    bar.finish()
 
-          self._log.info("Test PASSED %d", results.count('pass'))
-          self._log.info("Test FAILED %d", results.count('fail'))
+                    # Check the tests passed
+                    response = urllib2.urlopen("%s/results/%d/csv" %
+                                               (self._lava_url, self._jobid))
+                    tests = csv.DictReader(response.read().split('\r\n'))
 
-          if all(result == "pass" for result in results):
-            exit(0)
-          else:
-            exit(1)
+                    results = [test.get('result') for test in tests]
 
-        elif status == 'Canceled' or status == 'Cancelling':
+                    self._log.info("Test PASSED %d", results.count('pass'))
+                    self._log.info("Test FAILED %d", results.count('fail'))
+
+                    if all(result == "pass" for result in results):
+                        exit(0)
+                    else:
+                        exit(1)
+
+                elif status == 'Canceled' or status == 'Cancelling':
+                    bar.finish()
+                    exit(1)
+
+                elif status == 'Running':
+                    count += self._sleep
+
+                elif status == 'Incomplete':
+                    bar.finish()
+                    exit(1)
+
+                # Wait _sleep seconds
+                time.sleep(self._sleep)
+                status = server.scheduler.job_status(
+                    self._jobid).get('job_status')
+
             bar.finish()
-            exit(1)
 
-        elif status == 'Running':
-            count += self._sleep
-
-        elif status == 'Incomplete':
-            bar.finish()
-            exit(1)
-
-        # Wait _sleep seconds
-        time.sleep(self._sleep)
-        status = server.scheduler.job_status(self._jobid).get('job_status')
-
-      bar.finish()
-
-      if count >= self._running_timeout:
-        self._log.error("Running timeout")
-        exit(1)
+            if count >= self._running_timeout:
+                self._log.error("Running timeout")
+                exit(1)
