@@ -5,7 +5,9 @@ test:
     - python -m unittest discover
 
 docker-image:
-  stage: build
+  stage: deploy
+  only:
+    - master
   script:
     - 'IMAGE_NAME=docker.web-of-systems.com/lava-ctl'
     - 'docker build 
