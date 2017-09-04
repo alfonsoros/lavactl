@@ -15,7 +15,7 @@ class Storage(object):
         if not config:
             config = DefaultConfig()
 
-        self._logger = logger.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
         self._logger.progress_bar = config.getboolean(
             'logging', 'progress-bars')
 
