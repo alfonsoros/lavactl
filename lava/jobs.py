@@ -35,7 +35,7 @@ class JobDefinition(object):
             filename (str): Path to the input file
 
         """
-        self.logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
 
         # Construct from a file path
         if filename:
@@ -45,24 +45,25 @@ class JobDefinition(object):
                 # YAML format
                 try:
                     self._yaml = yaml.load(content)
-                    self.logger.info("LAVA Job definition loaded")
+                    self._logger.info("LAVA Job definition loaded")
                 except yaml.YAMLError:
-                    self.logger.error(
+                    self._logger.error(
                         "Incorrect YAML format in file name %s", filename)
                     self._yaml = yaml.load("")
         else:
-            self.logger.error("Couldn't load LAVA job definition")
+            self._logger.error("Couldn't load LAVA job definition")
             self._yaml = yaml.load("")
 
     def get(self, key):
         """Get te value associated to the input key in the job configuration"""
         try:
+            access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
             # solve keys encoded using 'dot' notation
-            return reduce(lambda c, k: c[k], key.split('.'), self._yaml)
+            return reduce(access, key.split('.'), self._yaml)
         except KeyError:
-            self.logger.error("Missing key %s in LAVA job description", key)
+            self._logger.error("Missing key %s in LAVA job description", key)
         except:
-            self.logger.error("Incorrect LAVA Job definition")
+            self._logger.error("Incorrect LAVA Job definition")
         return None
 
     def __repr__(self):
@@ -70,15 +71,13 @@ class JobDefinition(object):
 
 
 class Job(object):
-    """Lava Job
+    """Lava Job"""
 
-    """
+    def __init__(self, config):
 
-    def __init__(self, config, logger=None):
-
-        self._log = logger.getChild(
-            'job') if logger else logging.getLogger('lava.job')
-        self._log.progress_bar = config.getboolean('logging', 'progress-bars')
+        self._logger = logging.getLogger(__name__ + ".Job")
+        self._logger.progress_bar = config.getboolean(
+            'logging', 'progress-bars')
 
         self._conf = config
         self._lava_url = config.get('lava.server', 'url')
@@ -88,20 +87,20 @@ class Job(object):
         self._env = Environment(
             loader=PackageLoader('lava.devices', 'templates'))
 
-        self._log.debug('Lava URL:          %s', self._lava_url)
-        self._log.debug('Waiting-loop time: %ds', self._sleep)
-        self._log.debug('Running timemout:  %ds', self._running_timeout)
-        self._log.debug('Queued timeout:    %ds', self._waiting_timeout)
+        self._logger.debug('Lava URL:          %s', self._lava_url)
+        self._logger.debug('Waiting-loop time: %ds', self._sleep)
+        self._logger.debug('Running timemout:  %ds', self._running_timeout)
+        self._logger.debug('Queued timeout:    %ds', self._waiting_timeout)
 
         if config.has_section('lava.files'):
-            self._log.info('Uploading files to FTP server')
-            with Storage(config, self._log) as ftp:
+            self._logger.info('Uploading files to FTP server')
+            with Storage(config) as ftp:
                 self._kernel_url = ftp.upload(
                     config.get('lava.files', 'kernel'))
                 self._rootfs_url = ftp.upload(config.get('lava.files', 'rootfs'),
                                               compressed=True)
-                self._log.debug('Kernel URL:        %ds', self._kernel_url)
-                self._log.debug('Rootfs URL:        %ds', self._rootfs_url)
+                self._logger.debug('Kernel URL:        %ds', self._kernel_url)
+                self._logger.debug('Rootfs URL:        %ds', self._rootfs_url)
 
         # Test latest artifactory image
         else:
@@ -120,9 +119,9 @@ class Job(object):
             local_kernel = open(kernel, 'wb')
             local_rootfs = open(rootfs, 'wb')
 
-            with Storage(config, self._log) as ftp:
+            with Storage(config) as ftp:
 
-                self._log.info('Downloading latest image from artifactory')
+                self._logger.info('Downloading latest image from artifactory')
 
                 file = ArtifactoryPath(atf_kernel, auth=atfauth, verify=False)
                 with file.open() as k:
@@ -141,8 +140,8 @@ class Job(object):
                 if not self._rootfs_url.endswith('.gz'):
                     self._rootfs_url = self._rootfs_url + '.gz'
 
-                self._log.debug('Kernel URL:        %s', self._kernel_url)
-                self._log.debug('Rootfs URL:        %s', self._rootfs_url)
+                self._logger.debug('Kernel URL:        %s', self._kernel_url)
+                self._logger.debug('Rootfs URL:        %s', self._rootfs_url)
 
             local_kernel.close()
             local_rootfs.close()
@@ -150,7 +149,7 @@ class Job(object):
             os.remove(local_kernel.name)
             os.remove(local_rootfs.name)
 
-        self._log.info('Generating job description')
+        self._logger.info('Generating job description')
         qemu = self._env.get_template('qemux86.yaml')
 
         # Template context
@@ -172,9 +171,9 @@ class Job(object):
     def submit(self):
         with LavaRPC(self._conf) as server:
             self._jobid = server.scheduler.submit_job(self._job_definition)
-            self._log.info('Submitted Job ID: %d', self._jobid)
-            self._log.info('job url:\n\n%s/%s/%d\n',
-                           self._lava_url, 'scheduler/job', self._jobid)
+            self._logger.info('Submitted Job ID: %d', self._jobid)
+            self._logger.info('job url:\n\n%s/%s/%d\n',
+                              self._lava_url, 'scheduler/job', self._jobid)
 
     def poll(self):
         with LavaRPC(self._conf) as server:
@@ -196,7 +195,7 @@ class Job(object):
 
             # Job didn't start
             if count >= self._waiting_timeout:
-                self._log.error(
+                self._logger.error(
                     'Waiting timeout for queued Job-ID %d', self._jobid)
                 exit(1)
 
@@ -217,8 +216,8 @@ class Job(object):
 
                     results = [test.get('result') for test in tests]
 
-                    self._log.info("Test PASSED %d", results.count('pass'))
-                    self._log.info("Test FAILED %d", results.count('fail'))
+                    self._logger.info("Test PASSED %d", results.count('pass'))
+                    self._logger.info("Test FAILED %d", results.count('fail'))
 
                     if all(result == "pass" for result in results):
                         exit(0)
@@ -244,5 +243,5 @@ class Job(object):
             bar.finish()
 
             if count >= self._running_timeout:
-                self._log.error("Running timeout")
+                self._logger.error("Running timeout")
                 exit(1)
