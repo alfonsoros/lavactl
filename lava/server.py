@@ -4,10 +4,64 @@ import paramiko
 import gzip
 import shutil
 import logging
+import xmlrpclib
+import logging
 
 from progress.bar import Bar
 from config.default import DefaultConfig
 
+
+class LavaServer(object):
+  """Handle the communication with the LAVA Master server
+
+  This class requires the user to define the following configuration
+  parameters:
+
+    [lava.server]
+    addr = 139.25.40.26
+    port = 2041
+    files_prefix = lava-files
+    files = %(url)s/%(files_prefix)s
+    user = %(LAVA_USER)s
+    token = %(LAVA_TOKEN)s
+
+
+  """
+
+  def read_config(self, config):
+    CONFIG_SECTION = 'lava.server'
+    if not config.has_section(CONFIG_SECTION):
+        self.logger.error('Missing %s configuration section', CONFIG_SECTION)
+        raise RuntimeError('Missing Configuration Section: ', CONFIG_SECTION)
+
+    config_params = ['addr', 'port', 'files_prefix', 'user', 'token']
+
+    # Check all the parameters are set
+    missing = [p for p in config_params if not config.has_option(CONFIG_SECTION, p)]
+
+  def __init__(self, config=None, logger=None):
+    super(LavaServer, self).__init__()
+    self.logger = logger or logging.getLogger(__name__ + '.LavaServer')
+
+    if not config:
+      self.logger.debug("Using Default Configuration for LAVA Master")
+      self.read_config(DefaultConfig())
+    else:
+      self.read_config(config)
+
+
+class LavaRPC(object):
+  def __init__(self, config):
+    user = config.get('lava.server', 'user')
+    token = config.get('lava.server', 'token')
+    server = config.get('lava.server', 'addr')
+    self._url = "http://%s:%s@%s:2041/RPC2" % (user, token, server)
+
+  def __enter__(self):
+    return xmlrpclib.ServerProxy(self._url)
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    pass
 
 class Storage(object):
 
