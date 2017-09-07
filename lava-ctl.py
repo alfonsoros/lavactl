@@ -5,23 +5,46 @@ import sys
 import os
 import logging
 
-from ConfigParser import ConfigParser
-from lava.jobs import Job
+from pkg_resources import resource_filename
+
+from config import ConfigManager
+from lava.jobs import Job, JobDefinition
 from lava.tests import Test
-from config.default import DefaultConfig
 
+# Settup basic logging
+# TODO: Make lava-ctl to load the logging configuration from the conf file
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
-def load_config(conf_file=None):
-    if conf_file:
-        config = ConfigParser()
-        config.read(conf_file)
-    else:
-        config = DefaultConfig()
+def get_version_desc():
+    # Print version and exit
+    with open(resource_filename(__name__, 'VERSION'), 'r') as f:
+        return f.read()
+
+def overwrite_configuration_arguments(config, args):
+    """Gathers all the configuration in a final conf instance.
+
+    The configuration parameters can be overwritten if the proper environment
+    variables are found. However, the parameters specified by the command-line
+    take precedence over the environment variables and default configuration.
+
+    configuration precedence (highest to lowest):
+
+    1.- command-line arguments
+    2.- environment variables
+    3.- values in conf/default.yaml
+
+    """
+
+    # Override the command-line parameters
+    for k, v in [p.split('=') for p in args.conf_params]:
+        config.set(k, v)
+
     return config
 
 
 if __name__ == '__main__':
-
+    # Print out a bash script to call the docker image for lava-ctl
     if len(sys.argv) == 2 and sys.argv[1] == 'bash':
         with open('bash/lava-ctl', 'r') as f:
             sys.stdout.write(f.read())
@@ -33,10 +56,14 @@ if __name__ == '__main__':
     def path_exists(filepath):
         return filepath if os.path.exists(filepath) else parser.error("%s does not exists" % filepath)
 
-    parser.add_argument('--kernel', metavar='FILE',
-                        type=path_exists, help='kernel file.')
-    parser.add_argument('--rootfs', metavar='FILE',
-                        type=path_exists, help='rootfs file.')
+    # Overwrite configuration parameters
+    parser.add_argument('-p', '--param', dest='conf_params', metavar='KEY=VALUE',
+                        type=str, action='append', help='Set configuration parameter')
+
+    # Send LAVA Job description
+    parser.add_argument('--from-yaml', metavar='FILE',
+                        type=path_exists, help='LAVA Job YAML definition')
+
 
     parser.add_argument('--test-repo', dest='test_repos', metavar='URL', action='append',
                         help='git url for test repository')
@@ -44,35 +71,40 @@ if __name__ == '__main__':
     parser.add_argument('--test-param', dest='test_params', metavar='KEY=VALUE',
                         action='append', help='parameter to make available to the tests')
 
+    # provide a custom configuration file
     parser.add_argument('-c', '--config', metavar='FILE',
                         type=path_exists, help='config file')
 
-    parser.add_argument('--debug', action='store_true', help='show debug info')
-    parser.add_argument('--version', action='store_true', help='print version')
+    # Set log level to DEBUG
+    parser.add_argument('-d', '--debug', action='store_true', help='show debug info')
+
+    # Print the version to the stdout
+    parser.add_argument('-v', '--version', action='store_true', help='print version')
+
     parser.add_argument('--no-progress-bars',
                         action='store_true', help='skip progress bars.')
 
     args = parser.parse_args()
 
-    # Print version and exit
-    if args.version:
-        version_file = fn = os.path.join(os.path.dirname(__file__), 'VERSION')
-        with open(version_file, 'r') as f:
-            sys.stdout.write(f.read())
-
-    # Setup logging
-    logging.basicConfig()
-    logger = logging.getLogger(__name__)
     if args.debug:
-      logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
     else:
-      logger.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
+
+    # Print version and exit
+    logger.debug("lava-ctl VERSION %s", get_version_desc())
+    if args.version:
+        sys.stdout.write(get_version_desc())
 
     # Init configuration
-    config = load_config(args.config)
+    config = ConfigManager(filename=args.config, logger=logger)
 
-    config.add_section('logging')
-    config.set('logging', 'progress-bars', str(not args.no_progress_bars))
+    # Override the configuration with the command-line arguments
+    overwrite_configuration_arguments(config, args)
+
+    # TODO: configure the logging as well
+    # config.add_section('logging')
+    # config.set('logging', 'progress-bars', str(not args.no_progress_bars))
 
     # Test provided image
     if args.kernel or args.rootfs:
@@ -96,10 +128,20 @@ if __name__ == '__main__':
                        Test(repo) for repo in args.test_repos])
 
     # Print configuration when debugging
-    if args.debug:
-      logger.debug('lava-ctl configuration:')
-      config.write(sys.stdout)
+    logger.debug('LAVA-CTL Configuration:\n=== BEGIN CONFIGURATION ===\n%s\n'
+                 '=== END CONFIGURATION ===', str(config))
+
+    # Execute job
+    if args.from_yaml:
+        logger.debug("Reading YAML job definition")
+        JobDefinition(filename=args.from_yaml)
+        sys.exit(0)
+
+    sys.exit(0)
 
     job = Job(config)
-    job.submit()
-    job.poll()
+    if job.valid():
+        job.submit()
+        job.poll()
+    else:
+        logger.error("Can't create a LAVA job from the input")
