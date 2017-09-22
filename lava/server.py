@@ -1,67 +1,207 @@
 # -*- coding: utf-8 -*-
+import Queue
+import gzip
+import logging
 import os
 import paramiko
-import gzip
 import shutil
-import logging
+import signal
+import socket
 import xmlrpclib
-import logging
+import yaml
+import zmq
 
 from progress.bar import Bar
-from config.default import DefaultConfig
+from config import ConfigManager
+
+
+class Timeout(object):
+    """ Timeout error class with ALARM signal. Accepts time in seconds. """
+    class TimeoutError(Exception):
+        pass
+
+    def __init__(self, sec):
+        self.sec = sec
+
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.timeout_raise)
+        signal.alarm(self.sec)
+
+    def __exit__(self, *args):
+        signal.alarm(0)
+
+    def timeout_raise(self, *args):
+        raise Timeout.TimeoutError()
+
+
+class JobListener(object):
+    """docstring for JobListener"""
+
+    def __init__(self, url, logger=None):
+        super(JobListener, self).__init__()
+        self._logger = logger or logging.getLogger(__name__ + '.JobListener')
+        self._ctx = zmq.Context.instance()
+        self._sub = self._ctx.socket(zmq.SUB)
+        self._sub.setsockopt(zmq.SUBSCRIBE, b"")
+        self._sub.connect(url)
+
+    def wait(self, jobs, timeout):
+        """Wait for all the jobs"""
+
+        if not isinstance(jobs, list):
+            job_id = jobs
+        else:
+            job_id = int(float(jobs[0]))
+
+        FINISHED_JOB_STATUS = ["Complete", "Incomplete", "Canceled"]
+
+        try:
+            with Timeout(timeout):
+                while True:
+                    try:
+                        msg = self._sub.recv_multipart()
+                        (topic, uuid, dt, username, data) = msg[:]
+
+                        data = yaml.safe_load(data)
+                        if "job" in data and job_id == data["job"]:
+                            self._logger.debug(
+                                "Received ZMQ message:\n%s", yaml.dump(data,
+                                                                       default_flow_style=False))
+                            self._logger.debug(
+                                "Job ID %s -- status: %s", job_id, data["status"])
+                            if data["status"] in FINISHED_JOB_STATUS:
+                                self._status = data["status"]
+                                self._logger.debug(
+                                    "job %s finished with status %s", job_id, self._status)
+
+                                return True
+
+                    except IndexError:
+                        continue
+
+                return True
+
+        except Timeout.TimeoutError:
+            return False
 
 
 class LavaServer(object):
-  """Handle the communication with the LAVA Master server
+    """Handle the communication with the LAVA Master server
 
-  This class requires the user to define the following configuration
-  parameters:
+    This class requires the user to define the following configuration
+    parameters:
 
-    [lava.server]
-    addr = 139.25.40.26
-    port = 2041
-    files_prefix = lava-files
-    files = %(url)s/%(files_prefix)s
-    user = %(LAVA_USER)s
-    token = %(LAVA_TOKEN)s
-
-
-  """
-
-  def read_config(self, config):
-    CONFIG_SECTION = 'lava.server'
-    if not config.has_section(CONFIG_SECTION):
-        self.logger.error('Missing %s configuration section', CONFIG_SECTION)
-        raise RuntimeError('Missing Configuration Section: ', CONFIG_SECTION)
-
-    config_params = ['addr', 'port', 'files_prefix', 'user', 'token']
-
-    # Check all the parameters are set
-    missing = [p for p in config_params if not config.has_option(CONFIG_SECTION, p)]
-
-  def __init__(self, config=None, logger=None):
-    super(LavaServer, self).__init__()
-    self.logger = logger or logging.getLogger(__name__ + '.LavaServer')
-
-    if not config:
-      self.logger.debug("Using Default Configuration for LAVA Master")
-      self.read_config(DefaultConfig())
-    else:
-      self.read_config(config)
+      lava.server:
+        addr = "139.25.40.26"
+        port = 2041
+        files_prefix = "lava-files"
+        user = LAVA_USER
+        token = LAVA_TOKEN
 
 
-class LavaRPC(object):
-  def __init__(self, config):
-    user = config.get('lava.server', 'user')
-    token = config.get('lava.server', 'token')
-    server = config.get('lava.server', 'addr')
-    self._url = "http://%s:%s@%s:2041/RPC2" % (user, token, server)
+    ENVIRONMENT:
 
-  def __enter__(self):
-    return xmlrpclib.ServerProxy(self._url)
+    You can use the LAVA_USER and LAVA_TOKEN environment variables to set the
+    corresponding required variables.
 
-  def __exit__(self, exc_type, exc_value, traceback):
-    pass
+      LAVA_USER -> lava.server.user
+      LAVA_TOKEN -> lava.server.token
+
+    """
+
+    def read_config(self, config):
+        """Read the relevant configuration parameters
+
+        The following are the relevant parameters for the connection with the lava
+        master:
+
+          - lava.server.host
+          - lava.server.port
+          - lava.server.user
+          - lava.server.token
+
+        """
+        ENVIRONMENT_PARAMETERS = {
+            'LAVA_USER': 'lava.server.user',
+            'LAVA_TOKEN': 'lava.server.token',
+        }
+
+        REQUIRED_PARAMETERS = [
+            'lava.server.host',
+            'lava.server.port',
+            'lava.server.user',
+            'lava.server.token',
+            'lava.publisher.port',
+        ]
+
+        # Check environment
+        for env, param in ENVIRONMENT_PARAMETERS.iteritems():
+            if env in os.environ and not config.has_option(param):
+                config.set(param, os.environ[env])
+
+        for param in REQUIRED_PARAMETERS:
+            if not config.has_option(param):
+                self.logger.error("Missing parameter %s", param)
+                raise RuntimeError("Missing configuration", param)
+
+        host = config.get('lava.server.host')
+        port = config.get('lava.server.port')
+        user = config.get('lava.server.user')
+        token = config.get('lava.server.token')
+        url = "http://%s:%s@%s:%s/RPC2" % (user, token, host, port)
+        self.logger.debug('LAVA Master XML-RPC: %s', url)
+        self._rpc = xmlrpclib.ServerProxy(url)
+
+        # Store the publisher url
+        self._pub_url = 'tcp://%s:%s' % (host,
+                                         config.get('lava.publisher.port'))
+
+        # timeout for the jobs
+        self._timeout = config.get('lava.jobs.timeout')
+
+        try:
+            version = self._rpc.system.version()
+            self.logger.debug('Connected to LAVA Master')
+            self.logger.debug('LAVA Master VERSION %s', version)
+        except xmlrpclib.ProtocolError, err:
+            self.logger.error('Error while connecting to LAVA Master - %s %s',
+                              err.errcode, err.errmsg)
+            raise err
+
+    def validate(self, job_definition):
+        try:
+            self._rpc.scheduler.validate_yaml(str(job_definition))
+            self._logger.debug("Job definition validated")
+            return True
+        except xmlrpclib.Fault, flt:
+            self.logger.error("Job validation error - %s %s",
+                              flt.faultCode, flt.faultString)
+            return False
+        except xmlrpclib.ProtocolError, err:
+            self.logger.error('Error while connecting to LAVA Master - %s %s',
+                              err.errcode, err.errmsg)
+            raise err
+
+    def submit(self, job_definition):
+        job_id = self._rpc.scheduler.submit_job(str(job_definition))
+        # check the job id is fine
+        return job_id
+
+    def status(self, job_id):
+        """Return the status of the corresponding job ID"""
+        return self._rpc.scheduler.job_status(str(job_id))
+
+    def submit_and_wait(self, job):
+        """Submit the job and return a JobListener """
+        job_id = self.submit(job)
+        listener = JobListener(self._pub_url, logger=self.logger)
+        return listener.wait(job_id, timeout=self._timeout)
+
+    def __init__(self, config=None, logger=None):
+        super(LavaServer, self).__init__()
+        self.logger = logger or logging.getLogger(__name__ + '.LavaServer')
+        self.read_config(config or ConfigManager())
+
 
 class Storage(object):
 
