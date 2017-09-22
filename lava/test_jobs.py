@@ -1,6 +1,6 @@
 import unittest
 import tempfile
-from jobs import JobDefinition
+from jobs import JobDefinition, Job
 
 
 class TestJobDefinition(unittest.TestCase):
@@ -21,3 +21,10 @@ lava:
     def test_ConstructJobDescriptionFromYAMLFile(self):
         jd = JobDefinition(filename=self.file.name)
         self.assertEqual(jd.get("lava.job.name"), "test")
+
+class TestJob(unittest.TestCase):
+
+    @unittest.skip("job is broken now")
+    def test_EmptyConfigurationCantBeSubmitted(self):
+      job = Job({})
+      self.assertFalse(job.valid())
