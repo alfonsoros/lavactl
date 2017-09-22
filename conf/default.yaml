@@ -4,24 +4,19 @@ lava:
     host: "139.25.40.26"
     port: 2041
     files_prefix: "lava-files"
-#    user: LAVA_USER
-#    token: LAVA_TOKEN
+
+  publisher:
+    port: 2042
 
   sftp:
-#    user: LAVA_STORAGE_FTP_USER
-#    pass: LAVA_STORAGE_FTP_PASS
     port: 2040
 
   jobs:
-    sleep: 5
-    waiting_timeout: 600
-    running_timeout: 120
+    timeout: 600 # 10 min
 
 artifactory:
   auth:
     disable: true
-#    user: ATF_USER
-#    pass: ATF_PASS
 
   url: "https://wosatf.ct.siemens.com/artifactory/wos-images-snapshot/"
   image: "ses-qemux86-devel-EMBS-P-0.4-r1-92-g3e76cfc"
