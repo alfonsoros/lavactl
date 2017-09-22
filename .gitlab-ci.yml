@@ -1,13 +1,5 @@
-test:
-  stage: test
-  script:
-    - pip install requirements.txt
-    - python -m unittest discover
-
 docker-image:
   stage: deploy
-  only:
-    - master
   script:
     - 'IMAGE_NAME=docker.web-of-systems.com/lava-ctl'
     - 'docker build 
