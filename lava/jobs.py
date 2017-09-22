@@ -67,6 +67,12 @@ class JobDefinition(object):
             self.logger.error("Incorrect LAVA Job definition")
         return None
 
+    def set(self, key, value):
+        keys = key.split('.')
+        access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
+        cont = reduce(access, keys[:-1], self._yaml)
+        cont[keys[-1]] = value
+
     @property
     def lava_server(self):
         return self._lava_server
