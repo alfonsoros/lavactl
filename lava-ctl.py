@@ -8,7 +8,8 @@ import logging
 from pkg_resources import resource_filename
 
 from config import ConfigManager
-from lava.jobs import Job, JobDefinition
+from lava.server import LavaServer
+from lava.jobs import JobDefinition
 from lava.tests import Test
 
 # Settup basic logging
@@ -16,10 +17,12 @@ from lava.tests import Test
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 
+
 def get_version_desc():
     # Print version and exit
     with open(resource_filename(__name__, 'VERSION'), 'r') as f:
         return f.read()
+
 
 def overwrite_configuration_arguments(config, args):
     """Gathers all the configuration in a final conf instance.
@@ -62,27 +65,29 @@ if __name__ == '__main__':
 
     # Send LAVA Job description
     parser.add_argument('--from-yaml', metavar='FILE',
-                        type=path_exists, help='LAVA Job YAML definition')
+                        type=path_exists, help='Submit LAVA Job definition from a file')
 
-
-    parser.add_argument('--test-repo', dest='test_repos', metavar='URL', action='append',
-                        help='git url for test repository')
+    # parser.add_argument('--test-repo', dest='test_repos', metavar='URL', action='append',
+    # help='git url for test repository')
 
     parser.add_argument('--test-param', dest='test_params', metavar='KEY=VALUE',
-                        action='append', help='parameter to make available to the tests')
+                        action='append', help='Parameter to make available to the tests')
 
     # provide a custom configuration file
     parser.add_argument('-c', '--config', metavar='FILE',
-                        type=path_exists, help='config file')
+                        type=path_exists, help='Specify a custom configuration file')
+
+    # Do not wait of the job to finish or timeout
+    parser.add_argument('-q', '--dont-wait', action='store_true',
+                        help='Exit after job submission')
 
     # Set log level to DEBUG
-    parser.add_argument('-d', '--debug', action='store_true', help='show debug info')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='Show debug info')
 
     # Print the version to the stdout
-    parser.add_argument('-v', '--version', action='store_true', help='print version')
-
-    parser.add_argument('--no-progress-bars',
-                        action='store_true', help='skip progress bars.')
+    parser.add_argument('-v', '--version',
+                        action='store_true', help='print version')
 
     args = parser.parse_args()
 
@@ -106,42 +111,51 @@ if __name__ == '__main__':
     # config.add_section('logging')
     # config.set('logging', 'progress-bars', str(not args.no_progress_bars))
 
-    # Test provided image
-    if args.kernel or args.rootfs:
-        if args.kernel and args.rootfs and args.kernel != args.rootfs:
-            config.add_section('lava.files')
-            config.set('lava.files', 'kernel', args.kernel)
-            config.set('lava.files', 'rootfs', args.rootfs)
-        else:
-            logger.error('--kernel and --rootfs must be specified together')
-            exit(1)
-
     # Lava tests
-    if args.test_repos:
-        config.add_section('lava.test')
+    # if args.test_repos:
+    # config.add_section('lava.test')
 
-        if args.test_params:
-            config.set('lava.test', 'repos', [
-                       Test(repo, args.test_params) for repo in args.test_repos])
-        else:
-            config.set('lava.test', 'repos', [
-                       Test(repo) for repo in args.test_repos])
+    # if args.test_params:
+    # config.set('lava.test', 'repos', [
+    # Test(repo, args.test_params) for repo in args.test_repos])
+    # else:
+    # config.set('lava.test', 'repos', [
+    # Test(repo) for repo in args.test_repos])
 
     # Print configuration when debugging
     logger.debug('LAVA-CTL Configuration:\n=== BEGIN CONFIGURATION ===\n%s\n'
                  '=== END CONFIGURATION ===', str(config))
 
+    job_definition = None
+
     # Execute job
     if args.from_yaml:
-        logger.debug("Reading YAML job definition")
-        JobDefinition(filename=args.from_yaml)
-        sys.exit(0)
+        try:
+            job_definition = JobDefinition(
+                filename=args.from_yaml, config=config, logger=logger)
+        except Exception, e:
+            logger.error(e)
+            sys.exit(1)
 
-    sys.exit(0)
+    if not job_definition:
+        logger.error("Could not instantiate a LAVA Job definition")
+        sys.exit(1)
 
-    job = Job(config)
-    if job.valid():
-        job.submit()
-        job.poll()
+    if args.dont_wait:
+        success = job_definition.submit()
     else:
-        logger.error("Can't create a LAVA job from the input")
+        success = job_definition.submit_and_wait()
+
+    if success:
+        logger.debug("Job finished successfully")
+        sys.exit(0)
+    else:
+        logger.error("Job finished with errors")
+        sys.exit(1)
+
+    # job = Job(config)
+    # if job.valid():
+    # job.submit()
+    # job.poll()
+    # else:
+    # logger.error("Can't create a LAVA job from the input")

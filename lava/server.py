@@ -11,31 +11,17 @@ import xmlrpclib
 import yaml
 import zmq
 
-from progress.bar import Bar
 from config import ConfigManager
-
-
-class Timeout(object):
-    """ Timeout error class with ALARM signal. Accepts time in seconds. """
-    class TimeoutError(Exception):
-        pass
-
-    def __init__(self, sec):
-        self.sec = sec
-
-    def __enter__(self):
-        signal.signal(signal.SIGALRM, self.timeout_raise)
-        signal.alarm(self.sec)
-
-    def __exit__(self, *args):
-        signal.alarm(0)
-
-    def timeout_raise(self, *args):
-        raise Timeout.TimeoutError()
+from utils import timeout, TimeoutError
 
 
 class JobListener(object):
-    """docstring for JobListener"""
+    """Listens for the ZMQ notifications coming from the LAVA publisher.
+
+    Callbacks can be register for precessing messages
+
+    """
+    FINISHED_JOB_STATUS = ["Complete", "Incomplete", "Canceled"]
 
     def __init__(self, url, logger=None):
         super(JobListener, self).__init__()
@@ -45,43 +31,32 @@ class JobListener(object):
         self._sub.setsockopt(zmq.SUBSCRIBE, b"")
         self._sub.connect(url)
 
-    def wait(self, jobs, timeout):
-        """Wait for all the jobs"""
+    def wait(self, job, seconds=None):
+        def loop():
+            while True:
+                try:
+                    msg = self._sub.recv_multipart()
+                    (topic, uuid, dt, username, data) = msg[:]
 
-        if not isinstance(jobs, list):
-            job_id = jobs
-        else:
-            job_id = int(float(jobs[0]))
+                    data = yaml.safe_load(data)
+                    self._logger.debug("[ZMQ]:\n%s", yaml.dump(data, default_flow_style=False))
 
-        FINISHED_JOB_STATUS = ["Complete", "Incomplete", "Canceled"]
-
-        try:
-            with Timeout(timeout):
-                while True:
-                    try:
-                        msg = self._sub.recv_multipart()
-                        (topic, uuid, dt, username, data) = msg[:]
-
-                        data = yaml.safe_load(data)
-                        if "job" in data and job_id == data["job"]:
-                            self._logger.debug(
-                                "Received ZMQ message:\n%s", yaml.dump(data,
-                                                                       default_flow_style=False))
-                            self._logger.debug(
-                                "Job ID %s -- status: %s", job_id, data["status"])
-                            if data["status"] in FINISHED_JOB_STATUS:
-                                self._status = data["status"]
-                                self._logger.debug(
-                                    "job %s finished with status %s", job_id, self._status)
-
-                                return True
-
-                    except IndexError:
+                    # filter message from different job
+                    if "job" not in data or job != data["job"]:
                         continue
 
-                return True
+                    status = data["status"]
+                    self._logger.debug( "Job ID %s -- status: %s", job, status)
+                except Exception:
+                    status = None
 
-        except Timeout.TimeoutError:
+                if status and status in self.FINISHED_JOB_STATUS:
+                    return True if status == "Complete" else False
+
+        try:
+            wait = timeout(seconds=seconds)(loop)
+            return wait()
+        except TimeoutError:
             return False
 
 
@@ -108,6 +83,13 @@ class LavaServer(object):
       LAVA_TOKEN -> lava.server.token
 
     """
+    class LavaServerError(RuntimeError):
+        pass
+
+    def __init__(self, config=None, logger=None):
+        super(LavaServer, self).__init__()
+        self.logger = logger or logging.getLogger(__name__ + '.LavaServer')
+        self.read_config(config or ConfigManager())
 
     def read_config(self, config):
         """Read the relevant configuration parameters
@@ -184,7 +166,13 @@ class LavaServer(object):
 
     def submit(self, job_definition):
         job_id = self._rpc.scheduler.submit_job(str(job_definition))
-        # check the job id is fine
+
+        if not job_id:
+            self.logger.error("Error at submitting the LAVA job")
+            raise LavaServerError("Couldn't submit the job to the LAVA master")
+        else:
+            self.logger.debug("Successfully submitted job -- id: %s", job_id)
+
         return job_id
 
     def status(self, job_id):
@@ -194,13 +182,13 @@ class LavaServer(object):
     def submit_and_wait(self, job):
         """Submit the job and return a JobListener """
         job_id = self.submit(job)
-        listener = JobListener(self._pub_url, logger=self.logger)
-        return listener.wait(job_id, timeout=self._timeout)
 
-    def __init__(self, config=None, logger=None):
-        super(LavaServer, self).__init__()
-        self.logger = logger or logging.getLogger(__name__ + '.LavaServer')
-        self.read_config(config or ConfigManager())
+        if isinstance(job_id, list):
+            job_id = int(float(job_id[0]))
+
+        listener = JobListener(self._pub_url, logger=self.logger)
+        success = listener.wait(job_id, seconds=self._timeout)
+        return success
 
 
 class Storage(object):

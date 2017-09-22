@@ -37,21 +37,21 @@ class JobDefinition(object):
             filename (str): Path to the input file
 
         """
-        self.logger = logger or logging.getLogger(__name__ + '.JobDefinition')
+        self._logger = logger or logging.getLogger(__name__ + '.JobDefinition')
         self._conf = config or ConfigManager()
 
         if not filename:
-            self.logger.error("Wrong JobDefinition Initialization")
+            self._logger.error("Wrong JobDefinition Initialization")
             raise NotImplemented("Only Initialization from file implemented")
 
         with open(filename, 'rt') as f:
             content = f.read()
             try:
                 self._yaml = yaml.load(content)
-                self.logger.debug("Job Definition:\n=== BEGIN JOB DEFINITION ===\n%s\n"
+                self._logger.debug("Job Definition:\n=== BEGIN JOB DEFINITION ===\n%s\n"
                                    "=== END JOB DEFINITION ===", yaml.dump(self._yaml))
             except yaml.YAMLError:
-                self.logger.error(
+                self._logger.error(
                     "Incorrect YAML format in file name %s", filename)
                 raise RuntimeError("Invalid YAML file format", filename)
 
@@ -62,9 +62,9 @@ class JobDefinition(object):
             access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
             return reduce(access, key.split('.'), self._yaml)
         except KeyError:
-            self.logger.error("Missing key %s in LAVA job description", key)
+            self._logger.error("Missing key %s in LAVA job description", key)
         except:
-            self.logger.error("Incorrect LAVA Job definition")
+            self._logger.error("Incorrect LAVA Job definition")
         return None
 
     def set(self, key, value):
@@ -80,7 +80,7 @@ class JobDefinition(object):
     @lava_server.getter
     def lava_server(self):
         if getattr(self, '_lava_server', None) is None:
-            self._lava_server = LavaServer(config=self._conf, logger=self.logger)
+            self._lava_server = LavaServer(config=self._conf, logger=self._logger)
         return self._lava_server
 
     def valid(self):
@@ -92,13 +92,13 @@ class JobDefinition(object):
         if self.valid():
             self._jobid = self.lava_server.submit(self.__str__())
         else:
-            self.logger.error("Trying to submit invalid job")
+            self._logger.error("Trying to submit invalid job")
             raise RuntimeError("Trying to submit invalid job")
 
         if self._jobid:
-            self.logger.debug("Job Submitted successfully: %s", self._jobid)
+            self._logger.debug("Job Submitted successfully -- ID: %s", self._jobid)
         else:
-            self.logger.error("Couldn't submit LAVA job")
+            self._logger.error("Couldn't submit LAVA job")
             raise RuntimeError("Couldn't submit LAVA job")
 
     def submit_and_wait(self):
@@ -126,7 +126,7 @@ class JobDefinition(object):
         # self._logger = logging.getLogger(__name__ + ".Job")
 
         # if not config:
-            # self.logger.error("Creating a job with empty configuration")
+            # self._logger.error("Creating a job with empty configuration")
             # self._is_valid = False
 
         # self._logger.progress_bar = config.getboolean(
