@@ -1,7 +1,7 @@
 import logging
 
 from artifactory import ArtifactoryPath
-from config.default import DefaultConfig
+from config import ConfigManager
 
 
 class AtfImage(object):
@@ -17,9 +17,8 @@ class AtfImage(object):
 
       or add the keys to the configuration file:
 
-        [artifactory]
-        user = "username"
-        pass = "pass"
+        artifactory.user = "username"
+        artifactory.pass = "pass"
         ...
 
       Ultimately you can use the class properties to set them:
@@ -132,7 +131,7 @@ class AtfImage(object):
 
         # If set, use the user/password for authentication
         if config.has_option(CONFIG_SECTION, 'user') and \
-            config.has_option(CONFIG_SECTION, 'pass'):
+                config.has_option(CONFIG_SECTION, 'pass'):
             self._user = config.get(CONFIG_SECTION, 'user')
             self._pass = config.get(CONFIG_SECTION, 'pass')
         else:
@@ -148,11 +147,7 @@ class AtfImage(object):
         super(AtfImage, self).__init__()
         self.logger = logger or logging.getLogger(__name__ + '.AtfImage')
 
-        if not config:
-            self.logger.warning("using default configuration")
-            self.init_from_config(DefaultConfig(logger=self.logger))
-        else:
-            self.init_from_config(config)
+        self.init_from_config(config or ConfigManager())
 
         # The SSL verification is always disabled
         self._kernel_file = ArtifactoryPath(
