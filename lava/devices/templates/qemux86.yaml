@@ -14,6 +14,7 @@ visibility: public
 
 context:
   arch: i386
+  no_kvm: True
 
 actions:
 - deploy:
@@ -27,7 +28,9 @@ actions:
         rootfs:
           image_arg: -drive format=raw,file={rootfs}
           url: {{ rootfs_url }}
+{% if compression %}
           compression: gz
+{% endif %}
     os: oe
     root_partition: 1
 

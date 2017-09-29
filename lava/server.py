@@ -6,10 +6,12 @@ import os
 import paramiko
 import shutil
 import signal
+import hashlib
 import socket
 import xmlrpclib
 import yaml
 import zmq
+import urllib2
 
 from config import ConfigManager
 from utils import timeout, TimeoutError
@@ -39,14 +41,15 @@ class JobListener(object):
                     (topic, uuid, dt, username, data) = msg[:]
 
                     data = yaml.safe_load(data)
-                    self._logger.debug("[ZMQ]:\n%s", yaml.dump(data, default_flow_style=False))
+                    self._logger.debug("[ZMQ]:\n%s", yaml.dump(
+                        data, default_flow_style=False))
 
                     # filter message from different job
                     if "job" not in data or job != data["job"]:
                         continue
 
                     status = data["status"]
-                    self._logger.debug( "Job ID %s -- status: %s", job, status)
+                    self._logger.debug("Job ID %s -- status: %s", job, status)
                 except Exception:
                     status = None
 
@@ -88,7 +91,7 @@ class LavaServer(object):
 
     def __init__(self, config=None, logger=None):
         super(LavaServer, self).__init__()
-        self.logger = logger or logging.getLogger(__name__ + '.LavaServer')
+        self._logger = logger or logging.getLogger(__name__ + '.LavaServer')
         self.read_config(config or ConfigManager())
 
     def read_config(self, config):
@@ -123,30 +126,33 @@ class LavaServer(object):
 
         for param in REQUIRED_PARAMETERS:
             if not config.has_option(param):
-                self.logger.error("Missing parameter %s", param)
+                self._logger.error("Missing parameter %s", param)
                 raise RuntimeError("Missing configuration", param)
 
         host = config.get('lava.server.host')
         port = config.get('lava.server.port')
         user = config.get('lava.server.user')
         token = config.get('lava.server.token')
-        url = "http://%s:%s@%s:%s/RPC2" % (user, token, host, port)
-        self.logger.debug('LAVA Master XML-RPC: %s', url)
-        self._rpc = xmlrpclib.ServerProxy(url)
+
+        self._url = "http://%s:%s@%s:%s/" % (user, token, host, port)
+
+        rpcurl = self._url + 'RPC2'
+        self._logger.debug('LAVA Master XML-RPC: %s', rpcurl)
+        self._rpc = xmlrpclib.ServerProxy(rpcurl)
 
         # Store the publisher url
         self._pub_url = 'tcp://%s:%s' % (host,
                                          config.get('lava.publisher.port'))
 
-        # timeout for the jobs
-        self._timeout = config.get('lava.jobs.timeout')
+        # timeout for the job
+        self._timeout = config.get('lava.job.timeout')
 
         try:
             version = self._rpc.system.version()
-            self.logger.debug('Connected to LAVA Master')
-            self.logger.debug('LAVA Master VERSION %s', version)
+            self._logger.debug('Connected to LAVA Master')
+            self._logger.debug('LAVA Master VERSION %s', version)
         except xmlrpclib.ProtocolError, err:
-            self.logger.error('Error while connecting to LAVA Master - %s %s',
+            self._logger.error('Error while connecting to LAVA Master - %s %s',
                               err.errcode, err.errmsg)
             raise err
 
@@ -156,11 +162,11 @@ class LavaServer(object):
             self._logger.debug("Job definition validated")
             return True
         except xmlrpclib.Fault, flt:
-            self.logger.error("Job validation error - %s %s",
+            self._logger.error("Job validation error - %s %s",
                               flt.faultCode, flt.faultString)
             return False
         except xmlrpclib.ProtocolError, err:
-            self.logger.error('Error while connecting to LAVA Master - %s %s',
+            self._logger.error('Error while connecting to LAVA Master - %s %s',
                               err.errcode, err.errmsg)
             raise err
 
@@ -168,16 +174,23 @@ class LavaServer(object):
         job_id = self._rpc.scheduler.submit_job(str(job_definition))
 
         if not job_id:
-            self.logger.error("Error at submitting the LAVA job")
+            self._logger.error("Error at submitting the LAVA job")
             raise LavaServerError("Couldn't submit the job to the LAVA master")
         else:
-            self.logger.debug("Successfully submitted job -- id: %s", job_id)
+            self._logger.debug("Successfully submitted job -- id: %s", job_id)
 
         return job_id
 
     def status(self, job_id):
         """Return the status of the corresponding job ID"""
         return self._rpc.scheduler.job_status(str(job_id))
+
+    def check_tests_results(self, job):
+        report = yaml.load(self._rpc.results.get_testjob_results_yaml(job))
+        results = [test.get('result') for test in report]
+        self._logger.info("PASSED %d", results.count('pass'))
+        self._logger.info("FAILED %d", results.count('fail'))
+        return all(result == "pass" for result in results)
 
     def submit_and_wait(self, job):
         """Submit the job and return a JobListener """
@@ -186,30 +199,61 @@ class LavaServer(object):
         if isinstance(job_id, list):
             job_id = int(float(job_id[0]))
 
-        listener = JobListener(self._pub_url, logger=self.logger)
+        listener = JobListener(self._pub_url, logger=self._logger)
         success = listener.wait(job_id, seconds=self._timeout)
-        return success
+
+        return success and self.check_tests_results(job_id)
 
 
-class Storage(object):
+class FTPStorage(object):
 
-    def __init__(self, config=None):
-        if not config:
-            config = DefaultConfig()
+    def __init__(self, logger=None, config=None):
+        self._logger = logger or logging.getLogger(__name__)
+        self.read_config(config or ConfigManager())
+        self._logger.debug('Done FTP connection setup')
 
-        self._logger = logging.getLogger(__name__)
-        self._logger.progress_bar = config.getboolean(
-            'logging', 'progress-bars')
+    def read_config(self, config):
+        """Read the relevant configuration parameters
 
-        server = config.get('lava.server', 'addr')
-        port = config.getint('lava.sftp', 'port')
-        usr = config.get('lava.sftp', 'user')
-        pwd = config.get('lava.sftp', 'pass')
+        Parameters:
+          - lava.server.host
+          - lava.sftp.port
+          - lava.sftp.user
+          - lava.sftp.pass
 
-        self._transport = paramiko.Transport((server, port))
+        """
+        ENVIRONMENT_PARAMETERS = {
+            'LAVA_STORAGE_FTP_USER': 'lava.sftp.user',
+            'LAVA_STORAGE_FTP_PASS': 'lava.sftp.pass',
+        }
+
+        REQUIRED_PARAMETERS = [
+            'lava.server.host',
+            'lava.sftp.port',
+            'lava.sftp.user',
+            'lava.sftp.pass',
+        ]
+
+        # Check environment
+        for env, param in ENVIRONMENT_PARAMETERS.iteritems():
+            if env in os.environ and not config.has_option(param):
+                config.set(param, os.environ[env])
+
+        for param in REQUIRED_PARAMETERS:
+            if not config.has_option(param):
+                self._logger.error("Missing parameter %s", param)
+                raise RuntimeError("Missing configuration", param)
+
+        host = config.get('lava.server.host')
+        http_port = config.get('lava.server.port')
+        port = config.get('lava.sftp.port')
+        usr = config.get('lava.sftp.user')
+        pwd = config.get('lava.sftp.pass')
+
+        self._transport = paramiko.Transport((host, port))
         self._transport.connect(username=usr, password=pwd)
         self._sftp = paramiko.SFTPClient.from_transport(self._transport)
-        self._download_url = config.get('lava.server', 'files')
+        self._download_url = 'http://%s:%s/lava-files' % (host, http_port)
 
     def __str__(self):
         return u'Lava master ftp storage'
@@ -222,25 +266,20 @@ class Storage(object):
         self._transport.close()
 
     def upload(self, path, compressed=False):
+        name = os.path.basename(path)
+
         # Try to compress the file before uploading
         if compressed and not path.endswith('.gz'):
-            self._logger.info('Gzip the filesystem before uploading')
             with open(path, 'rb') as f_in, gzip.open(path + '.gz', 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
             path = path + '.gz'
+            name = name + '.gz'
 
-        # Some fancy progress bar
-        bar = Bar('Uploading %s' % os.path.basename(path))
+        # The file is already in the FTP-server, no need for re-upload
+        self._logger.debug('Uploading %s', path)
+        self._sftp.put(path, name)
+        file_url = u'%s/%s' % (self._download_url, name)
+        self._logger.debug('File download url: %s', file_url)
+        return file_url
 
-        def update_progress(current, total):
-            bar.index = current
-            bar.max = total
-            bar.update()
-
-        if not self._logger.progress_bar:
-            update_progress = None
-
-        name = os.path.basename(path)
-        self._sftp.put(path, name, callback=update_progress)
-        bar.finish()
         return u'%s/%s' % (self._download_url, name)

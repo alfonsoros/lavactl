@@ -8,7 +8,7 @@ import logging
 from pkg_resources import resource_filename
 
 from config import ConfigManager
-from lava.server import LavaServer
+from lava.server import LavaServer, FTPStorage
 from lava.jobs import JobDefinition
 from lava.tests import Test
 
@@ -45,6 +45,35 @@ def overwrite_configuration_arguments(config, args):
 
     return config
 
+def test_local_image(arguments):
+    """Check if a local image is present in the arguments
+
+    :arguments: The command line arguments
+    :returns: TODO
+
+    """
+
+    parameters = [
+      'kernel',
+      'rootfs',
+      'device',
+    ]
+
+    present = [getattr(arguments, param) is not None for param in parameters]
+
+    if all(present):
+        return True
+    elif any(present) and not all(present):
+        logger.warning("Missing parameters for testing the local image.")
+        for (arg, isPresent) in zip(parameters, present):
+            if isPresent:
+                logger.warning(arg + ": ok")
+            else:
+                logger.warning(arg + ": missing")
+        raise RuntimeError("Some parameters to test a local image are set.")
+
+    return False
+
 
 if __name__ == '__main__':
     # Print out a bash script to call the docker image for lava-ctl
@@ -66,6 +95,20 @@ if __name__ == '__main__':
     # Send LAVA Job description
     parser.add_argument('--from-yaml', metavar='FILE',
                         type=path_exists, help='Submit LAVA Job definition from a file')
+
+
+
+
+    # Submit local files
+    parser.add_argument('--device', metavar='DEVICE',
+                        type=str, help='Device type (e.g. qemux86)')
+    parser.add_argument('--kernel', metavar='FILE',
+                        type=path_exists, help='Kernel to be tested')
+    parser.add_argument('--rootfs', metavar='FILE',
+                        type=path_exists, help='filesystem to be tested')
+
+
+
 
     # parser.add_argument('--test-repo', dest='test_repos', metavar='URL', action='append',
     # help='git url for test repository')
@@ -107,26 +150,24 @@ if __name__ == '__main__':
     # Override the configuration with the command-line arguments
     overwrite_configuration_arguments(config, args)
 
-    # TODO: configure the logging as well
-    # config.add_section('logging')
-    # config.set('logging', 'progress-bars', str(not args.no_progress_bars))
-
-    # Lava tests
-    # if args.test_repos:
-    # config.add_section('lava.test')
-
-    # if args.test_params:
-    # config.set('lava.test', 'repos', [
-    # Test(repo, args.test_params) for repo in args.test_repos])
-    # else:
-    # config.set('lava.test', 'repos', [
-    # Test(repo) for repo in args.test_repos])
-
     # Print configuration when debugging
     logger.debug('LAVA-CTL Configuration:\n=== BEGIN CONFIGURATION ===\n%s\n'
                  '=== END CONFIGURATION ===', str(config))
 
     job_definition = None
+
+    if test_local_image(args):
+
+        # Upload the files
+        with FTPStorage(config=config, logger=logger) as remote:
+            url = remote.upload(args.kernel)
+            config.set('lava.job.kernel', url)
+
+            url = remote.upload(args.rootfs, compressed=True)
+            config.set('lava.job.rootfs', url)
+            config.set('lava.job.compressed', True)
+
+            config.set('lava.job.device', args.device)
 
     # Execute job
     if args.from_yaml:
@@ -136,6 +177,10 @@ if __name__ == '__main__':
         except Exception, e:
             logger.error(e)
             sys.exit(1)
+
+    # Try to instantiate a LAVA job from the arguments
+    else:
+        job_definition = JobDefinition(config=config, logger=logger)
 
     if not job_definition:
         logger.error("Could not instantiate a LAVA Job definition")

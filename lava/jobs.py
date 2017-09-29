@@ -2,7 +2,6 @@
 
 import sys
 import os
-import csv
 import xmlrpclib
 import time
 import urllib2
@@ -11,9 +10,9 @@ import tempfile
 import yaml
 
 from progress.bar import Bar
-from jinja2 import Environment, PackageLoader
+from jinja2 import Environment, PackageLoader, TemplateNotFound
 from artifactory import ArtifactoryPath
-from lava.server import LavaServer, Storage
+from lava.server import LavaServer, FTPStorage
 from lava.atf import AtfImage
 from config import ConfigManager
 
@@ -40,20 +39,54 @@ class JobDefinition(object):
         self._logger = logger or logging.getLogger(__name__ + '.JobDefinition')
         self._conf = config or ConfigManager()
 
-        if not filename:
-            self._logger.error("Wrong JobDefinition Initialization")
-            raise NotImplemented("Only Initialization from file implemented")
+        if filename:
+            with open(filename, 'rt') as f:
+                content = f.read()
+                try:
+                    self._yaml = yaml.load(content)
+                except yaml.YAMLError:
+                    self._logger.error(
+                        "Incorrect YAML format in file name %s", filename)
+                    raise RuntimeError("Invalid YAML file format", filename)
 
-        with open(filename, 'rt') as f:
-            content = f.read()
+        # Try to instantiate a LAVA definition using the configuration
+        # parameters
+        else:
+
+            self._logger.debug('Generating job description from arguments')
+            env = Environment(loader=PackageLoader('lava.devices'))
+
+            # These are the minimum required parameters to instantiate a job
+            REQUIRED_ARGUMENTS = [
+                'lava.job.device',
+                'lava.job.kernel',
+                'lava.job.rootfs',
+            ]
+
+
+            if not all([self._conf.has_option(o) for o in REQUIRED_ARGUMENTS]):
+                self._logger.error("Missing arguments to instantiate LAVA job")
+                raise RuntimeError("Missing arguments to instantiate LAVA job")
+
+            device = self._conf.get('lava.job.device')
+
             try:
-                self._yaml = yaml.load(content)
-                self._logger.debug("Job Definition:\n=== BEGIN JOB DEFINITION ===\n%s\n"
-                                   "=== END JOB DEFINITION ===", yaml.dump(self._yaml))
-            except yaml.YAMLError:
-                self._logger.error(
-                    "Incorrect YAML format in file name %s", filename)
-                raise RuntimeError("Invalid YAML file format", filename)
+                qemu = env.get_template(device + '.yaml')
+            except TemplateNotFound:
+                self._logger.error('Device %s not supported', device)
+                raise RuntimeError('Device not supported', device)
+
+            # Template context
+            context = {}
+            context['kernel_url'] = self._conf.get('lava.job.kernel')
+            context['rootfs_url'] = self._conf.get('lava.job.rootfs')
+            context['compression'] = True and self._conf.get('lava.job.compressed')
+
+            self._yaml = yaml.load(qemu.render(context))
+
+        self._logger.debug("Job Definition:\n=== BEGIN JOB DEFINITION ===\n%r\n"
+                           "=== END JOB DEFINITION ===", self)
+
 
     def get(self, key):
         """Get te value associated to the input key in the job configuration"""
@@ -109,194 +142,3 @@ class JobDefinition(object):
 
     def __repr__(self):
         return yaml.dump(self._yaml)
-
-
-# class Job(object):
-    # """Lava Job
-
-    # This class is the interface with a LAVA job that can be modified, validated
-    # and submitted to the a LAVA testing framework.
-
-
-    # """
-
-    # def __init__(self, config=None, filename=None):
-        # """Init the Job from the configuration"""
-
-        # self._logger = logging.getLogger(__name__ + ".Job")
-
-        # if not config:
-            # self._logger.error("Creating a job with empty configuration")
-            # self._is_valid = False
-
-        # self._logger.progress_bar = config.getboolean(
-            # 'logging', 'progress-bars')
-
-        # self._conf = config
-        # self._lava_url = config.get('lava.server', 'url')
-        # self._sleep = config.getint('lava.jobs', 'sleep')
-        # self._running_timeout = config.getint('lava.jobs', 'running_timeout')
-        # self._waiting_timeout = config.getint('lava.jobs', 'waiting_timeout')
-        # self._env = Environment(
-            # loader=PackageLoader('lava.devices', 'templates'))
-
-        # self._logger.debug('Lava URL:          %s', self._lava_url)
-        # self._logger.debug('Waiting-loop time: %ds', self._sleep)
-        # self._logger.debug('Running timemout:  %ds', self._running_timeout)
-        # self._logger.debug('Queued timeout:    %ds', self._waiting_timeout)
-
-        # if config.has_section('lava.files'):
-            # self._logger.info('Uploading files to FTP server')
-            # with Storage(config) as ftp:
-                # self._kernel_url = ftp.upload(
-                    # config.get('lava.files', 'kernel'))
-                # self._rootfs_url = ftp.upload(config.get('lava.files', 'rootfs'),
-                                              # compressed=True)
-                # self._logger.debug('Kernel URL:        %ds', self._kernel_url)
-                # self._logger.debug('Rootfs URL:        %ds', self._rootfs_url)
-
-        # # Test latest artifactory image
-        # else:
-            # atf = AtfImage(self._conf)
-
-            # atf = config.get('artifactory', 'server')
-            # latest = config.get('artifactory', 'latest')
-            # kernel = config.get('artifactory', 'kernel')
-            # rootfs = config.get('artifactory', 'rootfs')
-
-            # atfuser = config.get('artifactory', 'user')
-            # atfpass = config.get('artifactory', 'pass')
-            # atfauth = (atfuser, atfpass)
-
-            # atf_kernel = "%s/%s/%s" % (atf, latest, kernel)
-            # atf_rootfs = "%s/%s/%s" % (atf, latest, rootfs)
-
-            # local_kernel = open(kernel, 'wb')
-            # local_rootfs = open(rootfs, 'wb')
-
-            # with Storage(config) as ftp:
-
-                # self._logger.info('Downloading latest image from artifactory')
-
-                # file = ArtifactoryPath(atf_kernel, auth=atfauth, verify=False)
-                # with file.open() as k:
-                    # local_kernel.write(k.read())
-
-                # file = ArtifactoryPath(atf_rootfs, auth=atfauth, verify=False)
-                # with file.open() as r:
-                    # local_rootfs.write(r.read())
-
-                # local_kernel.seek(0)
-                # local_rootfs.seek(0)
-
-                # self._kernel_url = ftp.upload(local_kernel.name)
-                # self._rootfs_url = ftp.upload(
-                    # local_rootfs.name, compressed=True)
-                # if not self._rootfs_url.endswith('.gz'):
-                    # self._rootfs_url = self._rootfs_url + '.gz'
-
-                # self._logger.debug('Kernel URL:        %s', self._kernel_url)
-                # self._logger.debug('Rootfs URL:        %s', self._rootfs_url)
-
-            # local_kernel.close()
-            # local_rootfs.close()
-
-            # os.remove(local_kernel.name)
-            # os.remove(local_rootfs.name)
-
-        # self._logger.info('Generating job description')
-        # qemu = self._env.get_template('qemux86.yaml')
-
-        # # Template context
-        # context = {}
-        # context['kernel_url'] = self._kernel_url
-        # context['rootfs_url'] = self._rootfs_url
-
-        # # Add inline test
-        # if config.has_section('lava.test'):
-            # context['test'] = True
-            # context['test_repos'] = config.get('lava.test', 'repos')
-
-        # self._job_definition = qemu.render(context)
-
-    # @property
-    # def definition(self):
-        # return self._job_definition
-
-    # def submit(self):
-        # with LavaRPC(self._conf) as server:
-            # self._jobid = server.scheduler.submit_job(self._job_definition)
-            # self._logger.info('Submitted Job ID: %d', self._jobid)
-            # self._logger.info('job url:\n\n%s/%s/%d\n',
-                              # self._lava_url, 'scheduler/job', self._jobid)
-
-    # def poll(self):
-        # with LavaRPC(self._conf) as server:
-
-            # count = 0
-            # status = server.scheduler.job_status(self._jobid).get('job_status')
-
-            # # Wait while the job is Queued
-            # bar = Bar('Job %d: waiting in queue ' % self._jobid,
-                      # max=self._waiting_timeout, suffix='%(index)d / %(max)d seconds')
-            # while status == 'Submitted' and count < self._waiting_timeout:
-                # bar.index = count
-                # bar.update()
-
-                # count += self._sleep
-                # time.sleep(self._sleep)
-                # status = server.scheduler.job_status(
-                    # self._jobid).get('job_status')
-
-            # # Job didn't start
-            # if count >= self._waiting_timeout:
-                # self._logger.error(
-                    # 'Waiting timeout for queued Job-ID %d', self._jobid)
-                # exit(1)
-
-            # count = 0
-            # while count < self._running_timeout:
-                # bar.message = 'Job %d: %s' % (self._jobid, status)
-                # bar.index = count
-                # bar.max = self._running_timeout
-                # bar.update()
-
-                # if status == 'Complete':
-                    # bar.finish()
-
-                    # # Check the tests passed
-                    # response = urllib2.urlopen("%s/results/%d/csv" %
-                                               # (self._lava_url, self._jobid))
-                    # tests = csv.DictReader(response.read().split('\r\n'))
-
-                    # results = [test.get('result') for test in tests]
-
-                    # self._logger.info("Test PASSED %d", results.count('pass'))
-                    # self._logger.info("Test FAILED %d", results.count('fail'))
-
-                    # if all(result == "pass" for result in results):
-                        # exit(0)
-                    # else:
-                        # exit(1)
-
-                # elif status == 'Canceled' or status == 'Cancelling':
-                    # bar.finish()
-                    # exit(1)
-
-                # elif status == 'Running':
-                    # count += self._sleep
-
-                # elif status == 'Incomplete':
-                    # bar.finish()
-                    # exit(1)
-
-                # # Wait _sleep seconds
-                # time.sleep(self._sleep)
-                # status = server.scheduler.job_status(
-                    # self._jobid).get('job_status')
-
-            # bar.finish()
-
-            # if count >= self._running_timeout:
-                # self._logger.error("Running timeout")
-                # exit(1)
