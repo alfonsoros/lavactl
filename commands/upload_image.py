@@ -40,4 +40,11 @@ class Command(object):
         with FTPStorage(config=config, logger=self._logger) as remote:
             remote.upload_image(args.prefix, args.kernel, args.rootfs, device=args.device)
 
+    def __repr__(self):
+        return 'Command(upload-image)'
 
+    def __str__(self):
+        return 'Command(upload-image)'
+
+    def __unicode__(self):
+        return u'Command(upload-image)'
