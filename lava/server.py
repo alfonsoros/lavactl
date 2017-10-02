@@ -12,6 +12,7 @@ import xmlrpclib
 import yaml
 import zmq
 import urllib2
+import stat
 
 from progress.bar import Bar
 from config import ConfigManager
@@ -154,7 +155,7 @@ class LavaServer(object):
             self._logger.debug('LAVA Master VERSION %s', version)
         except xmlrpclib.ProtocolError, err:
             self._logger.error('Error while connecting to LAVA Master - %s %s',
-                              err.errcode, err.errmsg)
+                               err.errcode, err.errmsg)
             raise err
 
     def validate(self, job_definition):
@@ -164,11 +165,11 @@ class LavaServer(object):
             return True
         except xmlrpclib.Fault, flt:
             self._logger.error("Job validation error - %s %s",
-                              flt.faultCode, flt.faultString)
+                               flt.faultCode, flt.faultString)
             return False
         except xmlrpclib.ProtocolError, err:
             self._logger.error('Error while connecting to LAVA Master - %s %s',
-                              err.errcode, err.errmsg)
+                               err.errcode, err.errmsg)
             raise err
 
     def check_tests_results(self, job):
@@ -304,11 +305,27 @@ class FTPStorage(object):
 
         # Store meta-information about the image
         meta = {}
-        meta['device']     = device
-        meta['kernel']     = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(kernel))
-        meta['rootfs']     = 'file:///data/lava-ftp/%s/%s.gz' % (prefix, os.path.basename(rootfs))
+        meta['device'] = device
+        meta[
+            'kernel'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(kernel))
+        meta[
+            'rootfs'] = 'file:///data/lava-ftp/%s/%s.gz' % (prefix, os.path.basename(rootfs))
         meta['compressed'] = True
 
         metafile = '/data/lava-ftp/%s/img-meta.yaml' % prefix
         with self._sftp.open(metafile, 'w') as metaf:
             metaf.write(yaml.dump(meta, default_flow_style=False))
+
+    def list_images(self):
+        dirs = [d for d in
+                self._sftp.listdir_attr('.') if stat.S_ISDIR(d.st_mode)]
+
+        # list those images with meta information
+        for d in dirs:
+            meta = d.filename + '/img-meta.yaml'
+            try:
+                with self._sftp.open(meta, 'r') as info:
+                    print d.filename
+                    self._logger.debug('Image %s:\n%s', d.filename, info.read())
+            except IOError:
+                continue

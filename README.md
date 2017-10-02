@@ -17,10 +17,12 @@ chmod +x lava-ctl
 
 ## Commands
 
-| Command      | Functionality                             |
-|--------------|-------------------------------------------|
-| submit-job   | Submits a LAVA job definition from a file |
-| upload-image | Uploads a Linux image to the FTP server   |
+| Command      | Functionality                                                   |
+|--------------|-----------------------------------------------------------------|
+| submit-job   | Submits a LAVA job definition from a file                       |
+| upload-image | Uploads a Linux image to the FTP server                         |
+| list-images  | Lists the identifiers for the images already in the LAVA server |
+
 
 ## Submitting a LAVA job
 
