@@ -82,6 +82,19 @@ class JobDefinition(object):
             context['rootfs_url'] = self._conf.get('lava.job.rootfs')
             context['compression'] = True and self._conf.get('lava.job.compressed')
 
+            # Add the specified tests if any
+            if self._conf.has_option('lava.job.tests'):
+                context['test'] = True
+                context['test_repos'] = []
+
+                for test in self._conf.get('lava.job.tests'):
+                    repo = {}
+                    repo['name'] = test['name']
+                    repo['repo'] = test['repo']
+                    repo['revision'] = test['revision']
+                    repo['params'] = test['params']
+                    context['test_repos'].append(repo)
+
             self._yaml = yaml.load(qemu.render(context))
 
         self._logger.debug("Job Definition:\n=== BEGIN JOB DEFINITION ===\n%r\n"

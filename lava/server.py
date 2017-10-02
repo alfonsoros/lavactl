@@ -329,3 +329,8 @@ class FTPStorage(object):
                     self._logger.debug('Image %s:\n%s', d.filename, info.read())
             except IOError:
                 continue
+
+    def get_metadata(self, image):
+        with self._sftp.open(image + '/img-meta.yaml') as metafile:
+            meta = yaml.load(metafile.read())
+        return meta

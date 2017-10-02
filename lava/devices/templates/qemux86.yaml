@@ -62,8 +62,8 @@ actions:
         {% endif %}
         {% if repo.params %}
         parameters:
-            {% for param in repo.params %}
-            "{{ param.key }}": "{{ param.value }}"
+            {% for key, value in repo.params.iteritems() %}
+            "{{ key }}": "{{ value }}"
             {% endfor %}
         {% endif %}
 {% endfor %}

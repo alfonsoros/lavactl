@@ -8,7 +8,7 @@ import logging
 from pkg_resources import resource_filename
 
 from config import ConfigManager
-from commands import submit_job, upload_image, list_images
+from commands import submit_job, upload_image, list_images, run_test
 
 from lava.server import LavaServer, FTPStorage
 from lava.jobs import JobDefinition
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     # Sub-Commands
     commands = [ cmd.Command(logger=logger) for cmd in [submit_job,
-        upload_image, list_images] ]
+        upload_image, list_images, run_test] ]
 
     for cmd in commands:
         cmd.add_arguments(sub_cmds)
