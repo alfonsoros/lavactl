@@ -8,6 +8,8 @@ import logging
 from pkg_resources import resource_filename
 
 from config import ConfigManager
+from commands import submit_job, upload_image
+
 from lava.server import LavaServer, FTPStorage
 from lava.jobs import JobDefinition
 from lava.tests import Test
@@ -40,10 +42,12 @@ def overwrite_configuration_arguments(config, args):
     """
 
     # Override the command-line parameters
-    for k, v in [p.split('=') for p in args.conf_params]:
-        config.set(k, v)
+    if args.conf_params:
+        for k, v in [p.split('=') for p in args.conf_params]:
+            config.set(k, v)
 
     return config
+
 
 def test_local_image(arguments):
     """Check if a local image is present in the arguments
@@ -54,9 +58,9 @@ def test_local_image(arguments):
     """
 
     parameters = [
-      'kernel',
-      'rootfs',
-      'device',
+        'kernel',
+        'rootfs',
+        'device',
     ]
 
     present = [getattr(arguments, param) is not None for param in parameters]
@@ -84,20 +88,19 @@ if __name__ == '__main__':
 
     import argparse
     parser = argparse.ArgumentParser()
+    sub_cmds = parser.add_subparsers(help='command help')
 
-    def path_exists(filepath):
-        return filepath if os.path.exists(filepath) else parser.error("%s does not exists" % filepath)
+    # Sub-Commands
+    commands = [ cmd.Command(logger=logger) for cmd in [submit_job, upload_image] ]
+
+    for cmd in commands:
+        cmd.add_arguments(sub_cmds)
+
+    path_exists = lambda f: f if os.path.exists(f) else parser.error("%s not found" % f)
 
     # Overwrite configuration parameters
     parser.add_argument('-p', '--param', dest='conf_params', metavar='KEY=VALUE',
                         type=str, action='append', help='Set configuration parameter')
-
-    # Send LAVA Job description
-    parser.add_argument('--from-yaml', metavar='FILE',
-                        type=path_exists, help='Submit LAVA Job definition from a file')
-
-
-
 
     # Submit local files
     parser.add_argument('--device', metavar='DEVICE',
@@ -107,22 +110,15 @@ if __name__ == '__main__':
     parser.add_argument('--rootfs', metavar='FILE',
                         type=path_exists, help='filesystem to be tested')
 
-
-
-
     # parser.add_argument('--test-repo', dest='test_repos', metavar='URL', action='append',
     # help='git url for test repository')
 
-    parser.add_argument('--test-param', dest='test_params', metavar='KEY=VALUE',
-                        action='append', help='Parameter to make available to the tests')
+    # parser.add_argument('--test-param', dest='test_params', metavar='KEY=VALUE',
+                        # action='append', help='Parameter to make available to the tests')
 
     # provide a custom configuration file
     parser.add_argument('-c', '--config', metavar='FILE',
                         type=path_exists, help='Specify a custom configuration file')
-
-    # Do not wait of the job to finish or timeout
-    parser.add_argument('-q', '--dont-wait', action='store_true',
-                        help='Exit after job submission')
 
     # Set log level to DEBUG
     parser.add_argument('-d', '--debug', action='store_true',
@@ -154,53 +150,5 @@ if __name__ == '__main__':
     logger.debug('LAVA-CTL Configuration:\n=== BEGIN CONFIGURATION ===\n%s\n'
                  '=== END CONFIGURATION ===', str(config))
 
-    job_definition = None
-
-    if test_local_image(args):
-
-        # Upload the files
-        with FTPStorage(config=config, logger=logger) as remote:
-            url = remote.upload(args.kernel)
-            config.set('lava.job.kernel', url)
-
-            url = remote.upload(args.rootfs, compressed=True)
-            config.set('lava.job.rootfs', url)
-            config.set('lava.job.compressed', True)
-
-            config.set('lava.job.device', args.device)
-
-    # Execute job
-    if args.from_yaml:
-        try:
-            job_definition = JobDefinition(
-                filename=args.from_yaml, config=config, logger=logger)
-        except Exception, e:
-            logger.error(e)
-            sys.exit(1)
-
-    # Try to instantiate a LAVA job from the arguments
-    else:
-        job_definition = JobDefinition(config=config, logger=logger)
-
-    if not job_definition:
-        logger.error("Could not instantiate a LAVA Job definition")
-        sys.exit(1)
-
-    if args.dont_wait:
-        success = job_definition.submit()
-    else:
-        success = job_definition.submit_and_wait()
-
-    if success:
-        logger.debug("Job finished successfully")
-        sys.exit(0)
-    else:
-        logger.error("Job finished with errors")
-        sys.exit(1)
-
-    # job = Job(config)
-    # if job.valid():
-    # job.submit()
-    # job.poll()
-    # else:
-    # logger.error("Can't create a LAVA job from the input")
+    # Execute the specified command
+    args.evaluate(args, config)

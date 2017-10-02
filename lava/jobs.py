@@ -121,21 +121,14 @@ class JobDefinition(object):
             self._valid = self.lava_server.validate(self.__str__())
         return self._valid
 
-    def submit(self):
+    def submit(self, wait=True):
         if self.valid():
-            self._jobid = self.lava_server.submit(self.__str__())
+            result = self.lava_server.submit(self.__str__(), wait)
         else:
             self._logger.error("Trying to submit invalid job")
             raise RuntimeError("Trying to submit invalid job")
 
-        if self._jobid:
-            self._logger.debug("Job Submitted successfully -- ID: %s", self._jobid)
-        else:
-            self._logger.error("Couldn't submit LAVA job")
-            raise RuntimeError("Couldn't submit LAVA job")
-
-    def submit_and_wait(self):
-        return self.lava_server.submit_and_wait(self.__str__())
+        return result if result else False
 
     def __str__(self):
         return yaml.dump(self._yaml)

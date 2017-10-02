@@ -13,6 +13,7 @@ import yaml
 import zmq
 import urllib2
 
+from progress.bar import Bar
 from config import ConfigManager
 from utils import timeout, TimeoutError
 
@@ -170,7 +171,14 @@ class LavaServer(object):
                               err.errcode, err.errmsg)
             raise err
 
-    def submit(self, job_definition):
+    def check_tests_results(self, job):
+        report = yaml.load(self._rpc.results.get_testjob_results_yaml(job))
+        results = [test.get('result') for test in report]
+        self._logger.info("PASSED %d", results.count('pass'))
+        self._logger.info("FAILED %d", results.count('fail'))
+        return all(result == "pass" for result in results)
+
+    def submit(self, job_definition, wait=True):
         job_id = self._rpc.scheduler.submit_job(str(job_definition))
 
         if not job_id:
@@ -179,30 +187,19 @@ class LavaServer(object):
         else:
             self._logger.debug("Successfully submitted job -- id: %s", job_id)
 
-        return job_id
+        if isinstance(job_id, list):
+            job_id = int(float(job_id[0]))
+
+        if wait:
+            listener = JobListener(self._pub_url, logger=self._logger)
+            success = listener.wait(job_id, seconds=self._timeout)
+            return success and self.check_tests_results(job_id)
+        else:
+            return True
 
     def status(self, job_id):
         """Return the status of the corresponding job ID"""
         return self._rpc.scheduler.job_status(str(job_id))
-
-    def check_tests_results(self, job):
-        report = yaml.load(self._rpc.results.get_testjob_results_yaml(job))
-        results = [test.get('result') for test in report]
-        self._logger.info("PASSED %d", results.count('pass'))
-        self._logger.info("FAILED %d", results.count('fail'))
-        return all(result == "pass" for result in results)
-
-    def submit_and_wait(self, job):
-        """Submit the job and return a JobListener """
-        job_id = self.submit(job)
-
-        if isinstance(job_id, list):
-            job_id = int(float(job_id[0]))
-
-        listener = JobListener(self._pub_url, logger=self._logger)
-        success = listener.wait(job_id, seconds=self._timeout)
-
-        return success and self.check_tests_results(job_id)
 
 
 class FTPStorage(object):
@@ -265,8 +262,15 @@ class FTPStorage(object):
         self._sftp.close()
         self._transport.close()
 
-    def upload(self, path, compressed=False):
+    def upload(self, path, prefix=None, compressed=False):
         name = os.path.basename(path)
+
+        # Prepend the prefix
+        if prefix:
+            if prefix.endswith('/'):
+                name = prefix + name
+            else:
+                name = prefix + '/' + name
 
         # Try to compress the file before uploading
         if compressed and not path.endswith('.gz'):
@@ -275,11 +279,36 @@ class FTPStorage(object):
             path = path + '.gz'
             name = name + '.gz'
 
+        bar = Bar('Uploading %s' % os.path.basename(path))
+
+        def update_progress(current, total):
+            bar.index = current
+            bar.max = total
+            bar.update()
+
         # The file is already in the FTP-server, no need for re-upload
         self._logger.debug('Uploading %s', path)
-        self._sftp.put(path, name)
+        self._sftp.put(path, name, callback=update_progress)
         file_url = u'%s/%s' % (self._download_url, name)
         self._logger.debug('File download url: %s', file_url)
         return file_url
 
-        return u'%s/%s' % (self._download_url, name)
+    def upload_image(self, prefix, kernel, rootfs, device='qemux86', fscompressed=True):
+        """Upload the files of a EBS image and stores the meta information
+
+
+        TODO: fix issue with local qemu getting a http:// image
+        """
+        self.upload(kernel, prefix=prefix)
+        self.upload(rootfs, prefix=prefix, compressed=True)
+
+        # Store meta-information about the image
+        meta = {}
+        meta['device']     = device
+        meta['kernel']     = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(kernel))
+        meta['rootfs']     = 'file:///data/lava-ftp/%s/%s.gz' % (prefix, os.path.basename(rootfs))
+        meta['compressed'] = True
+
+        metafile = '/data/lava-ftp/%s/img-meta.yaml' % prefix
+        with self._sftp.open(metafile, 'w') as metaf:
+            metaf.write(yaml.dump(meta, default_flow_style=False))
