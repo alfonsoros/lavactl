@@ -1,7 +1,9 @@
 # LAVA Control
 
-This project provides a `lava-ctl` command to facilitate and also automate the 
-task of testing a IIoTI OS images in our device testing framework.
+This tool is designed to help in the continuous integration process of the 
+[Embeddedd System](https://code.siemens.com/webofsystems/ebs-yocto) project.  
+This tool is used to first boot the Linux images produced by this project and 
+then running different types of tests for the supported set of devices.
 
 ## Installing the bash-wrapper
 
@@ -27,10 +29,13 @@ chmod +x lava-ctl
 
 ## Submitting a LAVA job
 
-You can submit a test job with
+This command is equivalent to the `lava-tool submit-job` command. With this 
+command you can specify a LAVA Job definition from a file and submit it to the 
+LAVA master. Please refer to the ['linaro documentation'](https://validation.linaro.org/static/docs/v2/first-job.html) on 
+how to write these job definitions.
 
 ```bash
-lava-ctl --kernel /path/to/kernel.bin --rootfs /path/to/filesystem.ext4.gz
+lava-ctl submit-job job.yaml
 ```
 
 ## Testing a LAVA Test
