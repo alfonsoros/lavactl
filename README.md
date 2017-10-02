@@ -15,6 +15,13 @@ chmod +x lava-ctl
 ./lava-ctl --help
 ```
 
+## Commands
+
+| Command      | Functionality                             |
+|--------------|-------------------------------------------|
+| submit-job   | Submits a LAVA job definition from a file |
+| upload-image | Uploads a Linux image to the FTP server   |
+
 ## Submitting a LAVA job
 
 You can submit a test job with
