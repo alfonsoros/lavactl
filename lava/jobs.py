@@ -12,8 +12,60 @@ import yaml
 from progress.bar import Bar
 from jinja2 import Environment, PackageLoader, TemplateNotFound
 from lava.server import LavaServer, FTPStorage
-from lava.atf import AtfImage
 from config import ConfigManager
+
+class Job(object):
+    """Minimal configuration to run a LAVA job
+
+    lava-ctl tries to help the user by defaulting the LAVA configuration as
+    much as possible. However, the minimum configuration required for running a
+    LAVA job is:
+
+    - kernel URL: from where to download the kernel file
+    - rootfs URL: from where to download the root file system
+    - device: device type where to run the job
+
+    """
+    def __init__(self, config=None, logger=None):
+        super(Job, self).__init__()
+        self._logger = logger or logging.getLogger(__name__)
+        self._tests = []
+        if not config:
+            raise RuntimeError('Missing configuration for instantiating job')
+        self._kernel = config['kernel']
+        self._rootfs = config['rootfs']
+        self._device = config['device']
+
+        if 'compressed' in config:
+            self._compressed = config['compressed']
+        else:
+            self._compressed = self.rootfs.endswith('.gz')
+
+    @property
+    def kernel(self):
+        return self._kernel
+
+    @property
+    def rootfs(self):
+        return self._rootfs
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def compressed(self):
+        return self._compressed
+
+    @property
+    def tests(self):
+        return self._tests
+
+    def add_test(self, test):
+        self._tests.append(test)
+
+    def has_tests(self):
+        return len(self.tests) > 0
 
 
 class JobDefinition(object):
@@ -28,7 +80,7 @@ class JobDefinition(object):
 
     """
 
-    def __init__(self, filename=None, config=None, logger=None):
+    def __init__(self, job=None, filename=None, config=None, logger=None):
         """Parse and store the LAVA job definition.
 
         Args:
@@ -39,66 +91,54 @@ class JobDefinition(object):
         self._conf = config or ConfigManager()
 
         if filename:
-            with open(filename, 'rt') as f:
-                content = f.read()
-                try:
+            try:
+                with open(filename, 'rt') as f:
+                    content = f.read()
                     self._yaml = yaml.load(content)
-                except yaml.YAMLError:
-                    self._logger.error(
-                        "Incorrect YAML format in file name %s", filename)
-                    raise RuntimeError("Invalid YAML file format", filename)
+            except IOError, e:
+                self._logger.error("Couldn't read the file %s", filename)
+                raise e
+
+            except yaml.YAMLError, e:
+                self._logger.error("Invalid YAML in file %s", filename)
+                raise e
 
         # Try to instantiate a LAVA definition using the configuration
         # parameters
-        else:
-
-            self._logger.debug('Generating job description from arguments')
+        elif job:
             env = Environment(loader=PackageLoader('lava.devices'))
 
-            # These are the minimum required parameters to instantiate a job
-            REQUIRED_ARGUMENTS = [
-                'lava.job.device',
-                'lava.job.kernel',
-                'lava.job.rootfs',
-            ]
-
-
-            if not all([self._conf.has_option(o) for o in REQUIRED_ARGUMENTS]):
-                self._logger.error("Missing arguments to instantiate LAVA job")
-                raise RuntimeError("Missing arguments to instantiate LAVA job")
-
-            device = self._conf.get('lava.job.device')
-
             try:
-                qemu = env.get_template(device + '.yaml')
+                device = env.get_template(job.device + '.yaml')
             except TemplateNotFound:
-                self._logger.error('Device %s not supported', device)
-                raise RuntimeError('Device not supported', device)
+                self._logger.error('Device %s not supported', job.device)
+                raise RuntimeError('Device not supported', job.device)
+
+            self._logger.debug('Found template job for device %s', job.device)
 
             # Template context
             context = {}
-            context['kernel_url'] = self._conf.get('lava.job.kernel')
-            context['rootfs_url'] = self._conf.get('lava.job.rootfs')
-            context['compression'] = True and self._conf.get('lava.job.compressed')
+            context['kernel_url'] = job.kernel
+            context['rootfs_url'] = job.rootfs
+            context['compression'] = job.compressed
 
             # Add the specified tests if any
-            if self._conf.has_option('lava.job.tests'):
+            if job.has_tests():
                 context['test'] = True
                 context['test_repos'] = []
 
-                for test in self._conf.get('lava.job.tests'):
+                for test in job.tests:
                     repo = {}
-                    repo['name'] = test['name']
-                    repo['repo'] = test['repo']
-                    repo['revision'] = test['revision']
-                    repo['params'] = test['params']
+                    repo['name'] = test.name
+                    repo['repo'] = test.repo
+                    repo['revision'] = test.revision
+                    repo['params'] = test.params
                     context['test_repos'].append(repo)
 
-            self._yaml = yaml.load(qemu.render(context))
+            self._yaml = yaml.load(device.render(context))
 
         self._logger.debug("Job Definition:\n=== BEGIN JOB DEFINITION ===\n%r\n"
                            "=== END JOB DEFINITION ===", self)
-
 
     def get(self, key):
         """Get te value associated to the input key in the job configuration"""
@@ -125,7 +165,8 @@ class JobDefinition(object):
     @lava_server.getter
     def lava_server(self):
         if getattr(self, '_lava_server', None) is None:
-            self._lava_server = LavaServer(config=self._conf, logger=self._logger)
+            self._lava_server = LavaServer(
+                config=self._conf, logger=self._logger)
         return self._lava_server
 
     def valid(self):

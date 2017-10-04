@@ -147,7 +147,7 @@ class LavaServer(object):
                                          config.get('lava.publisher.port'))
 
         # timeout for the job
-        self._timeout = config.get('lava.job.timeout')
+        self._timeout = config.get('lava.server.jobs.timeout')
 
         try:
             version = self._rpc.system.version()

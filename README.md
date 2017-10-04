@@ -1,9 +1,16 @@
 # LAVA Control
 
-This tool is designed to help in the continuous integration process of the 
-[Embeddedd System](https://code.siemens.com/webofsystems/ebs-yocto) project.  
-This tool is used to first boot the Linux images produced by this project and 
-then running different types of tests for the supported set of devices.
+[LAVA](https://www.linaro.org/initiatives/lava/) is a framework for testing 
+Linux images within different hardware devices. It offers the functionality 
+necessary for setting up a continuous integration process for the development 
+of custom Linux distributions such as for example the [Embeddedd 
+System](https://code.siemens.com/webofsystems/ebs-yocto) project. 
+
+LAVA Control is a tool designed to help on the integration of such projects 
+with the LAVA framework. For that, LAVA Control tries to hide and default as 
+much configuration from the user as possible. The minimum parameters required 
+for running a hardware test are the URL from where to get the Kernel and root 
+file system, together with the corresponding device type.
 
 ## Installing the bash-wrapper
 

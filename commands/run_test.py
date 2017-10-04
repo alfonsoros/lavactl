@@ -4,7 +4,8 @@ import sys
 import yaml
 
 from lava.server import FTPStorage
-from lava.jobs import JobDefinition
+from lava.jobs import Job, JobDefinition
+from lava.tests import Test
 
 
 class Command(object):
@@ -23,6 +24,24 @@ class Command(object):
             '--no-wait', action='store_true', help='Don\'t wait for job result')
         self.parser.set_defaults(evaluate=self.evaluate)
 
+    def load_remote_meta(self, image_name, config):
+        with FTPStorage(config=config, logger=self._logger) as remote:
+            meta = remote.get_metadata(image_name)
+            self._logger.debug('Image metadata\n%s',
+                           yaml.dump(meta, default_flow_style=False))
+        return meta
+
+    def check_meta(self, meta):
+        REQUIRED = ['device', 'kernel', 'rootfs']
+        missing = [p for p in REQUIRED if p not in meta]
+        if len(missing) > 0:
+            raise RuntimeError('Missing job configuration', missing)
+
+        if meta['rootfs'].endswith('.gz'):
+            meta['compressed'] = True
+
+        return meta
+
     def evaluate(self, args, config):
         """Evaluate if the necessary arguments are present"""
 
@@ -36,29 +55,21 @@ class Command(object):
         self._logger.debug("test file content:\n%s",
                            yaml.dump(test, default_flow_style=False))
 
-        with FTPStorage(config=config, logger=self._logger) as remote:
-            meta = remote.get_metadata(test['image'])
-            self._logger.debug('Image metadata\n%s',
-                           yaml.dump(meta, default_flow_style=False))
+        # is a reference to an image in the FTP server
+        if isinstance(test['image'], basestring):
+            meta = self.load_remote_meta(test['image'], config)
+        else:
+            meta = self.check_meta(test['image'])
 
-        config.set('lava.job.kernel', meta['kernel'])
-        config.set('lava.job.rootfs', meta['rootfs'])
-        config.set('lava.job.device', meta['device'])
-        config.set('lava.job.compressed', meta['compressed'])
+        job = Job(config=meta, logger=self._logger)
 
         if len(test['tests']) > 0:
-            config.set('lava.job.tests', [])
-            for t in test['tests']:
-                new = {}
-                new['repo'] = t['repository']
-                new['name'] = t['name']
-                new['revision'] = t['revision']
-                new['params'] = t['params']
-                config.get('lava.job.tests').append(new)
+            for conf in test['tests']:
+                job.add_test(Test(config=conf, logger=self._logger))
 
-        job = JobDefinition(config=config, logger=self._logger)
+        jobdef = JobDefinition(job=job, config=config, logger=self._logger)
 
-        success = job.submit(wait=not args.no_wait)
+        success = jobdef.submit(wait=not args.no_wait)
 
         if success:
             self._logger.debug("Job finished successfully")
