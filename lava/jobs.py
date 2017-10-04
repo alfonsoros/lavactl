@@ -128,12 +128,7 @@ class JobDefinition(object):
                 context['test_repos'] = []
 
                 for test in job.tests:
-                    repo = {}
-                    repo['name'] = test.name
-                    repo['repo'] = test.repo
-                    repo['revision'] = test.revision
-                    repo['params'] = test.params
-                    context['test_repos'].append(repo)
+                    context['test_repos'].append(test)
 
             self._yaml = yaml.load(device.render(context))
 

@@ -1,0 +1,17 @@
+      - repository:
+          metadata:
+            format: Lava-Test Test Definition 1.0
+            name: {{ test.name }}
+            description: "server installation"
+            os:
+            - oe
+            scope:
+            - functional
+          run:
+            steps:
+  {% for step in test.steps %}
+            - {{ step }}
+  {% endfor %}
+        from: inline
+        name: {{ test.name }}
+        path: inline/{{ name }}.yaml

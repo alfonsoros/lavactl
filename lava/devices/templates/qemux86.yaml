@@ -52,19 +52,11 @@ actions:
     timeout:
       minutes: 5
     definitions:
-{% for repo in test_repos %}
-      - repository: {{ repo.repo }}
-        from: git
-        path: {{ repo.name }}.yaml
-        name: {{ repo.name }}
-        {% if repo.revision -%}
-        revision: {{ repo.revision }}
-        {% endif %}
-        {% if repo.params %}
-        parameters:
-            {% for key, value in repo.params.iteritems() %}
-            "{{ key }}": "{{ value }}"
-            {% endfor %}
-        {% endif %}
+{% for test in test_repos %}
+{% if test.inline %}
+{% include 'inline_test.yaml' %}
+{% else %}
+{% include 'test.yaml' %}
+{% endif %}
 {% endfor %}
 {% endif %}

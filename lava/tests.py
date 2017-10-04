@@ -16,23 +16,35 @@ class Test(object):
     """
 
     def check_configuration(self, config):
-        REQUIRED = ['repository', 'name', 'revision']
-        missing = [p for p in REQUIRED if p not in config]
-        if len(missing) > 0:
-            raise RuntimeError('missing keys in test conf', missing)
+        inline = ['name', 'steps']
+        remote = ['repository', 'name', 'revision']
+        is_inline = all([p in config for p in inline])
+        is_remote = all([p in config for p in remote])
+        if not is_inline and not is_remote:
+            raise RuntimeError('Error test configuration', config)
+        self._inline = is_inline
 
     def __init__(self, config=None, logger=None):
         if not config:
             raise RuntimeError('Missing test configuration')
         self.check_configuration(config)
-        self._repo = config['repository']
-        self._name = config['name']
-        self._revision = config['revision']
+
+        if not self._inline:
+            self._repo = config['repository']
+            self._name = config['name']
+            self._revision = config['revision']
+        else:
+            self._name = config['name']
+            self._steps = config['steps']
 
         if 'params' in config:
             self._params = config['params']
         else:
             self._params = {}
+
+    @property
+    def inline(self):
+        return self._inline
 
     @property
     def repo(self):
@@ -49,3 +61,7 @@ class Test(object):
     @property
     def params(self):
         return self._params
+
+    @property
+    def steps(self):
+        return self._steps

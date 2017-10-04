@@ -1,0 +1,13 @@
+      - repository: {{ test.repo }}
+        from: git
+        path: {{ test.name }}.yaml
+        name: {{ test.name }}
+        {% if test.revision -%}
+        revision: {{ test.revision }}
+        {% endif %}
+        {% if test.params %}
+        parameters:
+            {% for key, value in test.params.iteritems() %}
+            "{{ key }}": "{{ value }}"
+            {% endfor %}
+        {% endif %}

@@ -11,9 +11,3 @@ lava:
 
   sftp:
     port: 2040
-
-  default_job:
-    device: qemux86
-    kernel: "http://wosatf.ct.siemens.com/artifactory/wos-images-snapshot/ses-qemux86-devel-EMBS-P-0.4-r1-92-g3e76cfc/bzImage-qemux86.bin"
-    rootfs: "http://wosatf.ct.siemens.com/artifactory/wos-images-snapshot/ses-qemux86-devel-EMBS-P-0.4-r1-92-g3e76cfc/ses-image-devel-qemux86.ext4"
-    compressed: false
