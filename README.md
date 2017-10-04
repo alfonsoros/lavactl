@@ -31,7 +31,7 @@ chmod +x lava-ctl
 
 This command is equivalent to the `lava-tool submit-job` command. With this 
 command you can specify a LAVA Job definition from a file and submit it to the 
-LAVA master. Please refer to the ['linaro documentation'](https://validation.linaro.org/static/docs/v2/first-job.html) on 
+LAVA master. Please refer to the [linaro documentation](https://validation.linaro.org/static/docs/v2/first-job.html) on 
 how to write these job definitions.
 
 ```bash

@@ -11,7 +11,6 @@ import yaml
 
 from progress.bar import Bar
 from jinja2 import Environment, PackageLoader, TemplateNotFound
-from artifactory import ArtifactoryPath
 from lava.server import LavaServer, FTPStorage
 from lava.atf import AtfImage
 from config import ConfigManager

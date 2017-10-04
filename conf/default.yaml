@@ -17,13 +17,3 @@ lava:
     rootfs: "http://wosatf.ct.siemens.com/artifactory/wos-images-snapshot/ses-qemux86-devel-EMBS-P-0.4-r1-92-g3e76cfc/ses-image-devel-qemux86.ext4"
     compressed: false
     timeout: 600 # 10 min
-
-artifactory:
-  auth:
-    disable: true
-
-  url: "https://wosatf.ct.siemens.com/artifactory/wos-images-snapshot/"
-  image: "ses-qemux86-devel-EMBS-P-0.4-r1-92-g3e76cfc"
-  kernel: "bzImage-qemux86.bin"
-  rootfs: "ses-image-devel-qemux86.ext4"
-
