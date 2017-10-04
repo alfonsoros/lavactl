@@ -1,4 +1,6 @@
 # LAVA Control
+[![pipeline 
+status](https://code.siemens.com/iot/DOPS/lava-ctl/badges/master/pipeline.svg)](https://code.siemens.com/iot/DOPS/lava-ctl/commits/master)
 
 [LAVA](https://www.linaro.org/initiatives/lava/) is a framework for testing 
 Linux images within different hardware devices. It offers the functionality 
@@ -41,12 +43,12 @@ chmod +x lava-ctl
 
 ## Commands
 
-| Command                            | Description                                                     |
-|------------------------------------|-----------------------------------------------------------------|
-| [submit-job](submit-a-lava-job)    | Submits a LAVA job definition from a file                       |
-| [upload-image](uploading-an-image) | Uploads a Linux image to the FTP server                         |
-| list-images                        | Lists the identifiers for the images already in the LAVA server |
-| run-test                           | Test an image                                                   |
+| Command                              | Description                                                     |
+|--------------------------------------|-----------------------------------------------------------------|
+| [submit-job](#submitting-a-lava-job) | Submits a LAVA job definition from a file                       |
+| [upload-image](#uploading-an-image)  | Uploads a Linux image to the FTP server                         |
+| [list-images](#listing-the-images)   | Lists the identifiers for the images already in the LAVA server |
+| [run-test](#running-a-test-job)      | Test an image                                                   |
 
 
 ## Submitting a LAVA job
@@ -87,76 +89,77 @@ image: "latest"
 
 and run the test with: `./lava-ctl.py run-test test.yaml`
 
+## Listing the images
 
-## Testing a LAVA Test
-
-It might be the case that you are developing a test to be run on the images, in 
-that case, you can submit a test job to try your test on the latest image of 
-in the artifactory. You will need to specify 2 things, the git URL of the 
-repository containing the test and the name of the test file. Optionally you 
-can also specify the revision of the test.
-
-In order to have an 'easy' way to specify these 3 things as a command line
-argument, we have decided to concatenate these 3 in a string joined by `#`
-characters in the following order:
-
-```
-git@repository.com/test/repo.git#smoke-tests.yaml#12345678
-```
-
-#### Example
-
-Here is an example on how the integration test are evaluated:
+All the images uploaded using the [upload-image](#uploading-an-image) command, 
+are stored together with the meta-data necessary to reference them in tests. 
+You can list the current available images using the `list-images` command.
 
 ```bash
-lava-ctl --test-repo git@code.siemens.com:iot/device-integration-test.git#agents-integration.yaml#a3e2b765
+./lava-ctl.py list-images
 ```
 
-## Debugging
+You can refer to these images in the test file.
 
-This image uses environment variables for the configuration. In case of 
-trouble, you can show the configuration used by the App with the 
-`--debug` option:
 
+## Running a Test Job
+
+LAVA Control defines a YAML schema for representing a arbitrary number of tests 
+in a single image or also defining muti-node tests. The tests can be written 
+separately and version-controlled in separate repositories. Each test of this 
+kind must specify a name, git source url and revision hash. Additionally, it is 
+also possible to specify a set of key-value pairs of parameters to be available 
+inside the test.
+
+For example, we can write a `test.yaml` file that looks as follow:
+
+```yaml
+---
+image: 'qemux862017-10-02'
+tests:
+  - repository: 'git@code.siemens.com:iot/DOPS/device-integration-test.git'
+    name: 'agents-integration'
+    revision: '6e196e9bd1950b49a953f9092cacaaef175b1627'
+    params:
+      hello: 'world'
 ```
-lava-ctl --debug --kernel kernel.bin --rootfs filesystem.ext4.gz
-```
 
-## Configuration file
+This test will run the `agents-integration.yaml` test definition inside the 
+`qemux862017-20-02` image and report the results.
 
-You can find the default configuration file in `config/default.cfg`. In 
+
+## Configuration
+
+You can find the default configuration file in `conf/default.yaml`. In 
 case you need a particular configuration, these are the settings available:
 
-```ini
-[lava.server]
-addr = hostname // IP address or hostname of the lava master
-port = 1234 // port of the lava http interface
-url = http://%(addr)s:%(port)s // leave this
-files = %(url)s/lava-files // http server url from where to get the images
-user = %(LAVA_USER)s // lava user
-token = %(LAVA_TOKEN)s // lava user's token
+```yaml
+---
+lava:
+  server:
+    host: "139.25.40.26"
+    port: 2041
+    jobs:
+      timeout: 600 # 10 min
 
-[lava.sftp]
-user =  %(LAVA_STORAGE_FTP_USER)s   // FTP user name to upload the files
-pass =  %(LAVA_STORAGE_FTP_PASS)s   // FTP user password
-port = 2040 // sftp port (same as ssh usually)
+  publisher:
+    port: 2042
 
-[lava.jobs]
-sleep = 5 // waiting time on each polling loop iteration
-waiting_timeout = 600 // timeout when waiting in the queue
-running_timeout = 120 // timeout when the job is running
-
-[artifactory]
-user = %(ATF_USER)s
-pass = %(ATF_PASS)s
-server = https://wosatf.ct.siemens.com/artifactory
-latest = wos-images-snapshot/ses-qemux86-devel-EMBS-P-0.4-r1-92-g3e76cfc
-kernel = bzImage-qemux86.bin
-rootfs = ses-image-devel-qemux86.ext4
+  sftp:
+    port: 2040
 ```
 
-You can specify you configuration file using the `-c` option. For example:
+You can overwrite this configuration with your own one by giving the path to 
+the configuration file with the `-c` flag. For example:
 
 ```
-lava-ctl -c /path/to/my/config.cfg --kernel kernel.bin --rootfs filesystem.ext4.gz
+lava-ctl -c /path/to/my/config.cfg upload-image kernel.bin filesystem.ext4.gz
+```
+
+It is also possible to just overwrite individual parameters using the `-p` 
+flag. To specify the parameter, we use the dot-notation. For example, to 
+specify the LAVA user name, you can run:
+
+```
+lava-ctl -p lava.server.user=myuser upload-image kernel.bin filesystem.ext4.gz
 ```
