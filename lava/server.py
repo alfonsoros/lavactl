@@ -136,6 +136,7 @@ class LavaServer(object):
         user = config.get('lava.server.user')
         token = config.get('lava.server.token')
 
+        self._base_url = "http://%s:%s/" % (host, port)
         self._url = "http://%s:%s@%s:%s/" % (user, token, host, port)
 
         rpcurl = self._url + 'RPC2'
@@ -186,7 +187,16 @@ class LavaServer(object):
             self._logger.error("Error at submitting the LAVA job")
             raise LavaServerError("Couldn't submit the job to the LAVA master")
         else:
-            self._logger.debug("Successfully submitted job -- id: %s", job_id)
+            self._logger.info("Successfully submitted job -- id: %s", job_id)
+
+            if isinstance(job_id, list):
+                baseid = int(float(job_id[0]))
+                for i in xrange(len(job_id)):
+                    self._logger.info("Job %s output:\n%s/scheduler/job/%s",
+                            job_id[i], self._base_url, baseid + i)
+            else:
+                self._logger.info("Job output:\n%s/scheduler/job/%s",
+                        self._base_url, job_id)
 
         if isinstance(job_id, list):
             job_id = int(float(job_id[0]))

@@ -63,7 +63,7 @@ class Command(object):
 
         job = Job(config=meta, logger=self._logger)
 
-        if len(test['tests']) > 0:
+        if 'tests' in test and len(test['tests']) > 0:
             for conf in test['tests']:
                 job.add_test(Test(config=conf, logger=self._logger))
 

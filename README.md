@@ -12,6 +12,21 @@ much configuration from the user as possible. The minimum parameters required
 for running a hardware test are the URL from where to get the Kernel and root 
 file system, together with the corresponding device type.
 
+For example, you can write the following to a `test.yaml` file:
+
+```yaml
+image:
+  kernel: http://host/linux-kernel.bin
+  rootfs: http://host/root-filesystem.ext4
+  device: qemux86
+```
+
+and then simply call `lava-ctl.py` as follows:
+
+```bash
+./lava-ctl.py run-test test.yaml
+```
+
 ## Installing the bash-wrapper
 
 To avoid typing too much, this project includes a small hash script that can be 
@@ -26,12 +41,12 @@ chmod +x lava-ctl
 
 ## Commands
 
-| Command      | Functionality                                                   |
-|--------------|-----------------------------------------------------------------|
-| submit-job   | Submits a LAVA job definition from a file                       |
-| upload-image | Uploads a Linux image to the FTP server                         |
-| list-images  | Lists the identifiers for the images already in the LAVA server |
-| run-test     | Test an image                                                   |
+| Command                            | Description                                                     |
+|------------------------------------|-----------------------------------------------------------------|
+| [submit-job](submit-a-lava-job)    | Submits a LAVA job definition from a file                       |
+| [upload-image](uploading-an-image) | Uploads a Linux image to the FTP server                         |
+| list-images                        | Lists the identifiers for the images already in the LAVA server |
+| run-test                           | Test an image                                                   |
 
 
 ## Submitting a LAVA job
@@ -44,6 +59,34 @@ how to write these job definitions.
 ```bash
 lava-ctl submit-job job.yaml
 ```
+
+## Uploading an image
+
+This is a feature specific to our LAVA set up. We have set a SFTP server in the 
+same host as the LAVA master where we upload and store different images for 
+testing. For using the FTP server, it is necessary to specify the port of the 
+server using the parameter `lava.sftp.port`. Additionally, you could use the 
+`lava.sftp.user` and `lava.sftp.pass` to specify the user and the password for 
+the SFTP server. Alternatively, you can set the environment variables 
+`LAVA_STORAGE_FTP_USER` and `LAVA_STORAGE_FTP_PASS` with the same information.
+
+Once the information is set, you can upload an image using the command:
+
+```bash
+./lava-ctl.py upload-image --device qemux86 --prefix latest kernel-file.bin rootfs-file.ext4.gz
+```
+
+where the `--prefix` option is used as an identifier for the uploaded image. 
+After uploading it to the FTP server, you can use this image for testing by 
+simply referencing to the image `prefix`. For example, you can create a 
+`test.yaml` with the following content:
+
+```yaml
+image: "latest"
+```
+
+and run the test with: `./lava-ctl.py run-test test.yaml`
+
 
 ## Testing a LAVA Test
 
