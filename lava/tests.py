@@ -42,6 +42,11 @@ class Test(object):
         else:
             self._params = {}
 
+        if 'role' in config:
+            self._roles = config['role']
+        else:
+            self._roles = []
+
     @property
     def inline(self):
         return self._inline
@@ -61,6 +66,10 @@ class Test(object):
     @property
     def params(self):
         return self._params
+
+    @property
+    def roles(self):
+        return self._roles
 
     @property
     def steps(self):

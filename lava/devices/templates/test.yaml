@@ -1,3 +1,15 @@
+- test:
+{% for role in test.roles %}
+{% if loop.first %}
+    role:
+{% endif %}
+    - {{ role }}
+{% endfor %}
+    failure_retry: 3
+    name: test
+    timeout:
+      minutes: 5
+    definitions:
       - repository: {{ test.repo }}
         from: git
         path: {{ test.name }}.yaml
@@ -11,3 +23,4 @@
             "{{ key }}": "{{ value }}"
             {% endfor %}
         {% endif %}
+

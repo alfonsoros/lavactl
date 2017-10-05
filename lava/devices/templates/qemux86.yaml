@@ -1,5 +1,25 @@
-device_type: qemu
 job_name: qemu-x86-test
+
+{% if multinode %}
+protocols:
+  lava-multinode:
+    roles:
+{% for role in roles %}
+      {{ role }}:
+        device_type: qemu
+        context:
+          arch: i386
+          no_kvm: True
+        count: 1
+{% endfor %}
+    timeout:
+      minutes: 6
+{% else %}
+context:
+  device_type: qemu
+  arch: i386
+  no_kvm: True
+{% endif %}
 
 timeouts:
   job:
@@ -12,12 +32,14 @@ timeouts:
 priority: medium
 visibility: public
 
-context:
-  arch: i386
-  no_kvm: True
-
 actions:
 - deploy:
+{% for role in roles %}
+{% if loop.first %}
+    role:
+{% endif %}
+      - {{ role }}
+{% endfor %}
     timeout:
       minutes: 10
     to: tmpfs
@@ -35,6 +57,12 @@ actions:
     root_partition: 1
 
 - boot:
+    role:
+{% if multinode %}
+{% for role in roles %}
+      - {{ role }}
+{% endfor %}
+{% endif %}
     method: qemu
     timeout:
       minutes: 20
@@ -46,12 +74,6 @@ actions:
       username: root
 
 {% if test %}
-- test:
-    failure_retry: 3
-    name: test
-    timeout:
-      minutes: 5
-    definitions:
 {% for test in test_repos %}
 {% if test.inline %}
 {% include 'inline_test.yaml' %}

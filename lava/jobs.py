@@ -61,6 +61,9 @@ class Job(object):
     def tests(self):
         return self._tests
 
+    def all_roles(self):
+        return list(set([role for test in self.tests for role in test.roles]))
+
     def add_test(self, test):
         self._tests.append(test)
 
@@ -116,11 +119,15 @@ class JobDefinition(object):
 
             self._logger.debug('Found template job for device %s', job.device)
 
+            roles = job.all_roles()
+
             # Template context
             context = {}
             context['kernel_url'] = job.kernel
             context['rootfs_url'] = job.rootfs
             context['compression'] = job.compressed
+            context['multinode'] = len(roles) > 0
+            context['roles'] = roles
 
             # Add the specified tests if any
             if job.has_tests():

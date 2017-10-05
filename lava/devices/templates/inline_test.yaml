@@ -1,3 +1,15 @@
+- test:
+{% for role in test.roles %}
+{% if loop.first %}
+    role:
+{% endif %}
+    - {{ role }}
+{% endfor %}
+    failure_retry: 3
+    name: test
+    timeout:
+      minutes: 5
+    definitions:
       - repository:
           metadata:
             format: Lava-Test Test Definition 1.0
@@ -9,9 +21,9 @@
             - functional
           run:
             steps:
-  {% for step in test.steps %}
+{% for step in test.steps %}
             - {{ step }}
-  {% endfor %}
+{% endfor %}
         from: inline
         name: {{ test.name }}
         path: inline/{{ name }}.yaml
