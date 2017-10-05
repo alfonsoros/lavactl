@@ -19,6 +19,8 @@ class Command(object):
         self.parser = subparsers.add_parser(
             'run-test', help='Run tests on an image')
         self.parser.add_argument(
+            '--image', type=str, metavar='IMAGE NAME', help='image to test')
+        self.parser.add_argument(
             'yaml_file', type=str, metavar='FILE', help='test description')
         self.parser.add_argument(
             '--no-wait', action='store_true', help='Don\'t wait for job result')
@@ -28,7 +30,7 @@ class Command(object):
         with FTPStorage(config=config, logger=self._logger) as remote:
             meta = remote.get_metadata(image_name)
             self._logger.debug('Image metadata\n%s',
-                           yaml.dump(meta, default_flow_style=False))
+                               yaml.dump(meta, default_flow_style=False))
         return meta
 
     def check_meta(self, meta):
@@ -55,11 +57,18 @@ class Command(object):
         self._logger.debug("test file content:\n%s",
                            yaml.dump(test, default_flow_style=False))
 
+        if args.image:
+            meta = self.check_meta(args.image)
+
         # is a reference to an image in the FTP server
-        if isinstance(test['image'], basestring):
-            meta = self.load_remote_meta(test['image'], config)
+        elif 'image' in test:
+            if isinstance(test['image'], basestring):
+                meta = self.load_remote_meta(test['image'], config)
+            else:
+                meta = self.check_meta(test['image'])
+
         else:
-            meta = self.check_meta(test['image'])
+            meta = self.check_meta(config.get('default_image'))
 
         job = Job(config=meta, logger=self._logger)
 
