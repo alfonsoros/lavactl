@@ -8,6 +8,8 @@ cryptography==2.0.3
 decorator==4.1.2
 enum34==1.1.6
 functools32==3.2.3.post2
+gitdb2==2.0.3
+GitPython==2.1.7
 idna==2.6
 ipaddress==1.0.18
 ipdb==0.10.3
@@ -35,6 +37,7 @@ requests==2.18.4
 scandir==1.5
 simplegeneric==0.8.1
 six==1.10.0
+smmap2==2.0.3
 traitlets==4.3.2
 urllib3==1.22
 wcwidth==0.1.7
