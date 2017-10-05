@@ -3,6 +3,7 @@ import Queue
 import gzip
 import logging
 import os
+import sys
 import paramiko
 import shutil
 import signal
@@ -193,10 +194,10 @@ class LavaServer(object):
                 baseid = int(float(job_id[0]))
                 for i in xrange(len(job_id)):
                     self._logger.info("Job %s output:\n%s/scheduler/job/%s",
-                            job_id[i], self._base_url, baseid + i)
+                                      job_id[i], self._base_url, baseid + i)
             else:
                 self._logger.info("Job output:\n%s/scheduler/job/%s",
-                        self._base_url, job_id)
+                                  self._base_url, job_id)
 
         if isinstance(job_id, list):
             job_id = int(float(job_id[0]))
@@ -335,8 +336,9 @@ class FTPStorage(object):
             meta = d.filename + '/img-meta.yaml'
             try:
                 with self._sftp.open(meta, 'r') as info:
-                    print d.filename
-                    self._logger.debug('Image %s:\n%s', d.filename, info.read())
+                    sys.stdout.write(d.filename + '\n')
+                    self._logger.debug(
+                        'Image %s:\n%s', d.filename, info.read())
             except IOError:
                 continue
 
