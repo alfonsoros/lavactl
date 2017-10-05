@@ -6,7 +6,7 @@
     - {{ role }}
 {% endfor %}
     failure_retry: 3
-    name: test
+    name: {{ test.name }}
     timeout:
       minutes: 5
     definitions:

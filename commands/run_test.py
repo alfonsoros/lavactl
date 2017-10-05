@@ -2,6 +2,7 @@
 import os
 import sys
 import yaml
+import shutil
 
 from lava.server import FTPStorage
 from lava.jobs import Job, JobDefinition
@@ -20,6 +21,12 @@ class Command(object):
             'run-test', help='Run tests on an image')
         self.parser.add_argument(
             '--image', type=str, metavar='IMAGE NAME', help='image to test')
+        self.parser.add_argument(
+            '--repo', type=str, metavar='GIT URL', help='git repo URL')
+        self.parser.add_argument(
+            '--rev', type=str, metavar='REV HASH', help='commit\'s hash')
+        self.parser.add_argument(
+            '--branch', type=str, metavar='BRANCH', help='git branch')
         self.parser.add_argument(
             'yaml_file', type=str, metavar='FILE', help='test description')
         self.parser.add_argument(
@@ -47,6 +54,19 @@ class Command(object):
     def evaluate(self, args, config):
         """Evaluate if the necessary arguments are present"""
 
+        if args.repo:
+            repopath = os.path.join(os.curdir, 'test_repo')
+            branch = 'master' if not args.branch else args.branch
+
+            import git
+            repo = git.Repo.clone_from(args.repo, repopath, branch=branch)
+
+            if args.rev:
+                gitcmd = repo.git
+                gitcmd.checkout(args.rev)
+
+            args.yaml_file = os.path.join(repopath, args.yaml_file)
+
         # Check the file exists
         if not os.path.exists(args.yaml_file):
             raise RuntimeError('File does not exist', args.yaml_file)
@@ -54,11 +74,15 @@ class Command(object):
         with open(args.yaml_file) as testfile:
             test = yaml.load(testfile.read())
 
+        if args.repo:
+            shutil.rmtree(repopath)
+
+
         self._logger.debug("test file content:\n%s",
                            yaml.dump(test, default_flow_style=False))
 
         if args.image:
-            meta = self.check_meta(args.image)
+            meta = self.load_remote_meta(args.image, config)
 
         # is a reference to an image in the FTP server
         elif 'image' in test:
