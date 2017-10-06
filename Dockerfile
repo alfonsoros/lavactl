@@ -5,20 +5,23 @@ ARG token
 ARG master_addr
 ARG ftp_user
 ARG ftp_pass
-ARG atf_user
-ARG atf_pass
+ARG ssh_priv
 
 ENV LAVA_SERVER_ADDR=$master_addr
 ENV LAVA_USER=$user
 ENV LAVA_TOKEN=$token
 ENV LAVA_STORAGE_FTP_USER=$ftp_user
 ENV LAVA_STORAGE_FTP_PASS=$ftp_pass
-ENV ATF_USER=$atf_user
-ENV ATF_PASS=$atf_pass
 
-RUN pip install jinja2 paramiko PyYAML progress artifactory
-
-ADD . /lava-ctl
+ADD . /src
 WORKDIR /lava-ctl
 
-ENTRYPOINT [ "python", "./lava-ctl.py" ]
+RUN mkdir -p /root/.ssh
+RUN ssh-keyscan code.siemens.com >> /root/.ssh/known_hosts
+RUN echo "$ssh_priv" > /root/.ssh/id_rsa
+RUN chmod 600 /root/.ssh/id_rsa
+
+RUN pip install -e /src/
+RUN (cd /src && python setup.py install)
+
+ENTRYPOINT ["lava-ctl", "--debug"]

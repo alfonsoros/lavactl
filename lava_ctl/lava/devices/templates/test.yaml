@@ -1,0 +1,26 @@
+- test:
+{% for role in test.roles %}
+{% if loop.first %}
+    role:
+{% endif %}
+    - {{ role }}
+{% endfor %}
+    failure_retry: 3
+    name: {{ test.name }}
+    timeout:
+      minutes: 5
+    definitions:
+      - repository: {{ test.repo }}
+        from: git
+        path: {{ test.name }}.yaml
+        name: {{ test.name }}
+        {% if test.revision -%}
+        revision: {{ test.revision }}
+        {% endif %}
+        {% if test.params %}
+        parameters:
+            {% for key, value in test.params.iteritems() %}
+            "{{ key }}": "{{ value }}"
+            {% endfor %}
+        {% endif %}
+

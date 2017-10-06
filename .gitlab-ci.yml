@@ -1,5 +1,5 @@
 docker-image:
-  stage: build
+  stage: deploy
   script:
     - 'IMAGE_NAME=docker.web-of-systems.com/lava-ctl'
     - 'docker build 
@@ -10,6 +10,7 @@ docker-image:
           --build-arg master_addr=$LAVA_SERVER_ADDR
           --build-arg ftp_user=$LAVA_STORAGE_FTP_USER
           --build-arg ftp_pass=$LAVA_STORAGE_FTP_PASS
+          --build-arg ssh_priv="$SSH_PRIVATE_KEY"
           -t $IMAGE_NAME .'
     - if [ "$CI_BUILD_REF_NAME" == "master" ]; then
     -   'docker tag $IMAGE_NAME $IMAGE_NAME:$(cat VERSION)'

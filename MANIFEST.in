@@ -1,0 +1,5 @@
+include VERSION
+recursive-include bin *
+recursive-include lava_ctl/commands *
+recursive-include lava_ctl/lava *
+recursive-include lava_ctl/resources *
