@@ -29,16 +29,28 @@ and then simply call `lava-ctl.py` as follows:
 ./lava-ctl.py run-test test.yaml
 ```
 
-## Installing the bash-wrapper
+## Usage
 
-To avoid typing too much, this project includes a small hash script that can be 
-used to skip typing the docker commands. You can then "install" this app by 
-executing
+You can use this project in two different ways. You can either install
+`lava-ctl` as a python package or use it's docker image. To install it as a
+python package you can simply clone this project and simply execute:
 
-```bash
-docker run docker.web-of-systems.com/lava-ctl bash > lava-ctl
-chmod +x lava-ctl
-./lava-ctl --help
+```sh
+python setup.py install
+```
+
+This will provide the `lava-ctl` command to your path. After this you should be
+able to execute:
+
+```sh
+lava-ctl --help
+```
+
+If you don't want to install `lava-ctl` as a python package and you have docker
+installed, you can pull the docker image:
+
+```
+docker pull docker.web-of-systems.com/lava-ctl
 ```
 
 ## Commands
@@ -104,29 +116,36 @@ You can refer to these images in the test file.
 
 ## Running a Test Job
 
-LAVA Control defines a YAML schema for representing a arbitrary number of tests 
-in a single image or also defining muti-node tests. The tests can be written 
-separately and version-controlled in separate repositories. Each test of this 
-kind must specify a name, git source url and revision hash. Additionally, it is 
-also possible to specify a set of key-value pairs of parameters to be available 
-inside the test.
-
-For example, we can write a `test.yaml` file that looks as follow:
+LAVA Control defines a YAML schema for representing a arbitrary number of tests
+to be applied inside a single image. For example, one can write a very simple
+test inside a YAML file `test.yaml` with the following content:
 
 ```yaml
 ---
-image: 'qemux862017-10-02'
 tests:
-  - repository: 'git@code.siemens.com:iot/DOPS/device-integration-test.git'
-    name: 'agents-integration'
-    revision: '6e196e9bd1950b49a953f9092cacaaef175b1627'
-    params:
-      hello: 'world'
+  - name: 'emtpy-file-creation'
+    steps:
+    - lava-test-case touch-file --shell touch example.txt
 ```
 
-This test will run the `agents-integration.yaml` test definition inside the 
-`qemux862017-20-02` image and report the results.
+The test will check if we can create file inside the image. This type of test
+is known as _inline_ test in the LAVA documentation because we are specifying
+the commands to run in the test directly.
 
+We can use `lava-ctl` to run this tests in a image that we have already
+uploaded to the LAVA master using the `lava-ctl upload-image` command. Let's
+suppose that we named that image 'qemu-latest' using the `--prefix` flag. To
+run this test in the 'qemu-latest' image, we can simply execute:
+
+```sh
+lava-ctl run-test --image qemu-latest test.yaml
+```
+
+You can also version-control the `test.yaml` file and simply input the reference to the git repository:
+
+```sh
+lava-ctl run-test --image qemu-latest --repo git@code.siemens.com/me/my_test_repo.git test.yaml
+```
 
 ## Configuration
 
