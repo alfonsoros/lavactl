@@ -16,9 +16,9 @@ import urllib2
 import stat
 
 from progress.bar import Bar
-from config import ConfigManager
-from utils import timeout, TimeoutError
 
+from lava_ctl.config import ConfigManager
+from lava_ctl.utils import timeout, TimeoutError
 
 class JobListener(object):
     """Listens for the ZMQ notifications coming from the LAVA publisher.

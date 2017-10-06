@@ -12,9 +12,9 @@ ENV LAVA_TOKEN=$token
 ENV LAVA_STORAGE_FTP_USER=$ftp_user
 ENV LAVA_STORAGE_FTP_PASS=$ftp_pass
 
-ADD . /lava-ctl
+ADD . /src
 WORKDIR /lava-ctl
 
-RUN pip install -r requirements.txt
+RUN (cd /src && python setup.py install)
 
-ENTRYPOINT [ "python", "./lava-ctl.py" ]
+ENTRYPOINT [ "lava-ctl" ]

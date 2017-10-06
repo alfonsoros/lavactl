@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# vi: set ft=python :
 # -*- coding: utf-8 -*-
 
 import sys
@@ -7,8 +8,8 @@ import logging
 
 from pkg_resources import resource_filename
 
-from config import ConfigManager
-from commands import submit_job, upload_image, list_images, run_test
+from lava_ctl.config import ConfigManager
+from lava_ctl.commands import submit_job, upload_image, list_images, run_test
 
 # Settup basic logging
 # TODO: Make lava-ctl to load the logging configuration from the conf file

@@ -3,7 +3,7 @@ import sys
 import os
 import logging
 
-from lava.jobs import JobDefinition
+from lava_ctl.lava.jobs import JobDefinition
 
 
 class Command(object):

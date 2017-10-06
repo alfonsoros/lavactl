@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from lava.server import FTPStorage
+from lava_ctl.lava.server import FTPStorage
 
 class Command(object):
     """Submit LAVA job definition command"""

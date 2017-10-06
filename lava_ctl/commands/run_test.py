@@ -4,9 +4,9 @@ import sys
 import yaml
 import shutil
 
-from lava.server import FTPStorage
-from lava.jobs import Job, JobDefinition
-from lava.tests import Test
+from lava_ctl.lava.server import FTPStorage
+from lava_ctl.lava.jobs import Job, JobDefinition
+from lava_ctl.lava.tests import Test
 
 
 class Command(object):

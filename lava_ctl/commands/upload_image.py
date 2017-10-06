@@ -3,7 +3,7 @@ import os
 import time
 
 from datetime import datetime
-from lava.server import FTPStorage
+from lava_ctl.lava.server import FTPStorage
 
 class Command(object):
     """Uploads an image to the master FTP server"""

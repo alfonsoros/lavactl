@@ -11,8 +11,9 @@ import yaml
 
 from progress.bar import Bar
 from jinja2 import Environment, PackageLoader, TemplateNotFound
-from lava.server import LavaServer, FTPStorage
-from config import ConfigManager
+
+from lava_ctl.config import ConfigManager
+from lava_ctl.lava.server import LavaServer, FTPStorage
 
 class Job(object):
     """Minimal configuration to run a LAVA job
