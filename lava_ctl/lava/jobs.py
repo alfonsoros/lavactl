@@ -110,7 +110,7 @@ class JobDefinition(object):
         # Try to instantiate a LAVA definition using the configuration
         # parameters
         elif job:
-            env = Environment(loader=PackageLoader('lava.devices'))
+            env = Environment(loader=PackageLoader('lava_ctl.lava.devices'))
 
             try:
                 device = env.get_template(job.device + '.yaml')

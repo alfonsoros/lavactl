@@ -52,7 +52,7 @@ class ConfigManager(object):
 
         # Load default configuration
         self._config = self.load_file(
-            resource_filename('conf', 'default.yaml'))
+            resource_filename('lava_ctl', 'resources/default_conf.yaml'))
 
         if filename:
             user_config = self.load_file(filename)

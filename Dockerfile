@@ -15,6 +15,7 @@ ENV LAVA_STORAGE_FTP_PASS=$ftp_pass
 ADD . /src
 WORKDIR /lava-ctl
 
+RUN pip install -e /src/
 RUN (cd /src && python setup.py install)
 
-ENTRYPOINT [ "lava-ctl" ]
+ENTRYPOINT ["lava-ctl", "--debug"]
