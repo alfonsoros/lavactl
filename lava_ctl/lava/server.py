@@ -330,6 +330,17 @@ class FTPStorage(object):
             bar.max = total
             bar.update()
 
+        # Check if prefix folder already exists
+        try:
+          if not stat.S_ISDIR(self._sftp.stat(prefix).st_mode):
+            # exists but is not a file
+            raise RuntimeError('%s already exists but is not a directory' % prefix)
+
+        except IOError:
+          # Create the prefix folder
+          self._logger.debug('Creating the prefix folder %s', prefix)
+          self._sftp.mkdir(prefix)
+
         # The file is already in the FTP-server, no need for re-upload
         self._logger.debug('Uploading %s', path)
         self._sftp.put(path, name, callback=update_progress)
