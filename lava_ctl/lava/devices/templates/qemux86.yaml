@@ -15,8 +15,8 @@ protocols:
     timeout:
       minutes: 6
 {% else %}
+device_type: qemu
 context:
-  device_type: qemu
   arch: i386
   no_kvm: True
 {% endif %}
