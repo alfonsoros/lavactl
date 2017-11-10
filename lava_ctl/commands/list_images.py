@@ -26,13 +26,14 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 from lava_ctl.lava.server import FTPStorage
 
 class Command(object):
-    """Submit LAVA job definition command"""
+    """Lists the images available in the FTP server"""
 
     def __init__(self, logger=None):
         super(Command, self).__init__()
         self._logger = logger or logging.getLogger(__name__)
 
     def add_arguments(self, subparsers):
+		"""Define the arguments of the command"""
         self.parser = subparsers.add_parser(
             'list-images', help='list the images in the ftp server')
         self.parser.set_defaults(evaluate=self.evaluate)

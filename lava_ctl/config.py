@@ -32,7 +32,7 @@ class ConfigManager(object):
     """Handle the App's configuration values"""
 
     def load_file(self, filename):
-        # Load default configuration
+        """Load configuration from a file"""
         with open(filename, 'r') as src:
             try:
                 return yaml.load(src)
@@ -53,16 +53,19 @@ class ConfigManager(object):
         update(self._config, config)
 
     def get(self, key):
+		"""Get the value for a key from the configuration"""
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
         return reduce(access, key.split('.'), self._config)
 
     def set(self, key, value):
+		"""Set the value for a key in the configuration"""
         keys = key.split('.')
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
         cont = reduce(access, keys[:-1], self._config)
         cont[keys[-1]] = value
 
     def has_option(self, key):
+		"""Check if a key is available in the configuration"""
         try:
             self.get(key)
             return True
@@ -78,6 +81,7 @@ class ConfigManager(object):
         self._config = self.load_file(
             resource_filename('lava_ctl', 'resources/default_conf.yaml'))
 
+		# Override default configuration with the user defined configuration file
         if filename:
             user_config = self.load_file(filename)
             self.deep_update(user_config)
