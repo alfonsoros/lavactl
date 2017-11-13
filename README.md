@@ -5,14 +5,13 @@ status](https://code.siemens.com/iot/DOPS/lava-ctl/badges/master/pipeline.svg)](
 [LAVA](https://www.linaro.org/initiatives/lava/) is a framework for testing 
 Linux images within different hardware devices. It offers the functionality 
 necessary for setting up a continuous integration process for the development 
-of custom Linux distributions such as for example the [Embeddedd 
-System](https://code.siemens.com/webofsystems/ebs-yocto) project. 
+of custom Linux distributions. 
 
 LAVA Control is a tool designed to help on the integration of such projects 
 with the LAVA framework. For that, LAVA Control tries to hide and default as 
 much configuration from the user as possible. The minimum parameters required 
-for running a hardware test are the URL from where to get the Kernel and root 
-file system, together with the corresponding device type.
+for running a hardware test are the URLs from where to get the Kernel and the 
+root file system, together with the corresponding device type.
 
 For example, you can write the following to a `test.yaml` file:
 
@@ -33,7 +32,7 @@ and then simply call `lava-ctl.py` as follows:
 
 You can use this project in two different ways. You can either install
 `lava-ctl` as a python package or use it's docker image. To install it as a
-python package you can simply clone this project and simply execute:
+python package, you can simply clone this project and execute:
 
 ```sh
 python setup.py install
@@ -76,9 +75,9 @@ lava-ctl submit-job job.yaml
 
 ## Uploading an image
 
-This is a feature specific to our LAVA set up. We have set a SFTP server in the 
-same host as the LAVA master where we upload and store different images for 
-testing. For using the FTP server, it is necessary to specify the port of the 
+In order to use this feature, you have to set an SFTP server in the same host 
+as the LAVA master, where we upload and store different images for testing. 
+For using the FTP server, it is necessary to specify the port of the 
 server using the parameter `lava.sftp.port`. Additionally, you could use the 
 `lava.sftp.user` and `lava.sftp.pass` to specify the user and the password for 
 the SFTP server. Alternatively, you can set the environment variables 
@@ -116,7 +115,7 @@ You can refer to these images in the test file.
 
 ## Running a Test Job
 
-LAVA Control defines a YAML schema for representing a arbitrary number of tests
+LAVA Control defines a YAML schema to represent an arbitrary number of tests
 to be applied inside a single image. For example, one can write a very simple
 test inside a YAML file `test.yaml` with the following content:
 
@@ -144,39 +143,45 @@ lava-ctl run-test --image qemu-latest test.yaml
 You can also version-control the `test.yaml` file and simply input the reference to the git repository:
 
 ```sh
-lava-ctl run-test --image qemu-latest --repo git@code.siemens.com/me/my_test_repo.git test.yaml
+lava-ctl run-test --image qemu-latest --repo git@host/me/my_test_repo.git test.yaml
 ```
 
 ## Configuration
 
-You can find the default configuration file in `conf/default.yaml`. In 
+You can find the default configuration in the file `lava_ctl/resources/default_conf.yaml`. In 
 case you need a particular configuration, these are the settings available:
 
 ```yaml
 ---
 lava:
   server:
-    host: "139.25.40.26"
-    port: 2041
+    host: "127.0.0.1" #Replace with the IP Address of your LAVA server
+    port: 80 #Replace with the port number of your LAVA server
     jobs:
       timeout: 600 # 10 min
 
   publisher:
-    port: 2042
+    port: 5500 #Replace with the port number of the publisher
 
   sftp:
-    port: 2040
+    port: 22 #Replace with the port number of the SFTP server
+
+default_image:
+  device: qemux86  #Replace with the device type of the default image
+  kernel: "http://host/linux-kernel.bin"  #Replace with the url of the kernal image
+  rootfs: "http://host/root-filesystem.ext4"  #Replace with the url of the root file system image
+  compressed: false  #State whether the rootfs image is compressed
 ```
 
 You can overwrite this configuration with your own one by giving the path to 
-the configuration file with the `-c` flag. For example:
+your configuration file with the `-c` flag. For example:
 
 ```
 lava-ctl -c /path/to/my/config.cfg upload-image kernel.bin filesystem.ext4.gz
 ```
 
-It is also possible to just overwrite individual parameters using the `-p` 
-flag. To specify the parameter, we use the dot-notation. For example, to 
+It is also possible to overwrite individual parameters using the `-p` 
+flag. To specify parameters, we use the dot-notation. For example, to 
 specify the LAVA user name, you can run:
 
 ```

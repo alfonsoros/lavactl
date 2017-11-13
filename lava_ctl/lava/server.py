@@ -1,4 +1,29 @@
 # -*- coding: utf-8 -*-
+"""
+Copyright (c) 2017 Siemens AG
+Author: Alfonso Ros Dos Santos
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+"""
+
 import Queue
 import gzip
 import logging
@@ -72,13 +97,11 @@ class LavaServer(object):
     This class requires the user to define the following configuration
     parameters:
 
-      lava.server:
-        addr = "139.25.40.26"
-        port = 2041
-        files_prefix = "lava-files"
-        user = LAVA_USER
-        token = LAVA_TOKEN
-
+      lava.server.addr
+      lava.server.port
+      lava.server.files_prefix
+      lava.server.user
+      lava.server.token
 
     ENVIRONMENT:
 
@@ -122,11 +145,12 @@ class LavaServer(object):
             'lava.publisher.port',
         ]
 
-        # Check environment
+        # Check environment variables
         for env, param in ENVIRONMENT_PARAMETERS.iteritems():
             if env in os.environ and not config.has_option(param):
                 config.set(param, os.environ[env])
 
+        # Check if the required parameters are available
         for param in REQUIRED_PARAMETERS:
             if not config.has_option(param):
                 self._logger.error("Missing parameter %s", param)
@@ -161,6 +185,7 @@ class LavaServer(object):
             raise err
 
     def validate(self, job_definition):
+        """Validate a job definition"""
         try:
             self._rpc.scheduler.validate_yaml(str(job_definition))
             self._logger.debug("Job definition validated")
@@ -175,6 +200,7 @@ class LavaServer(object):
             raise err
 
     def check_tests_results(self, job):
+        """Check if all the tests of a job are passed"""
         report = yaml.load(self._rpc.results.get_testjob_results_yaml(job))
         results = [test.get('result') for test in report]
         self._logger.info("PASSED %d", results.count('pass'))
@@ -182,6 +208,7 @@ class LavaServer(object):
         return all(result == "pass" for result in results)
 
     def submit(self, job_definition, wait=True):
+        """Submit a job to the LAVA server"""
         job_id = self._rpc.scheduler.submit_job(str(job_definition))
 
         if not job_id:
@@ -215,6 +242,7 @@ class LavaServer(object):
 
 
 class FTPStorage(object):
+    """The FTP server which is used to store images for testing"""
 
     def __init__(self, logger=None, config=None):
         self._logger = logger or logging.getLogger(__name__)
@@ -243,11 +271,12 @@ class FTPStorage(object):
             'lava.sftp.pass',
         ]
 
-        # Check environment
+        # Check environment variables
         for env, param in ENVIRONMENT_PARAMETERS.iteritems():
             if env in os.environ and not config.has_option(param):
                 config.set(param, os.environ[env])
 
+        # Check if all the required parameters are available
         for param in REQUIRED_PARAMETERS:
             if not config.has_option(param):
                 self._logger.error("Missing parameter %s", param)
@@ -275,6 +304,8 @@ class FTPStorage(object):
         self._transport.close()
 
     def upload(self, path, prefix=None, compressed=False):
+        """Upload a file to the FTP server"""
+        
         name = os.path.basename(path)
 
         # Prepend the prefix
@@ -291,6 +322,7 @@ class FTPStorage(object):
             path = path + '.gz'
             name = name + '.gz'
 
+        # Display the upload progress on a progress bar
         bar = Bar('Uploading %s' % os.path.basename(path))
 
         def update_progress(current, total):
@@ -328,10 +360,11 @@ class FTPStorage(object):
             metaf.write(yaml.dump(meta, default_flow_style=False))
 
     def list_images(self):
+        """List the images available in the FTP server"""
         dirs = [d for d in
                 self._sftp.listdir_attr('.') if stat.S_ISDIR(d.st_mode)]
 
-        # list those images with meta information
+        # List those images with meta information
         for d in dirs:
             meta = d.filename + '/img-meta.yaml'
             try:
@@ -343,6 +376,7 @@ class FTPStorage(object):
                 continue
 
     def get_metadata(self, image):
+        """Read meta-information of an image"""
         with self._sftp.open(image + '/img-meta.yaml') as metafile:
             meta = yaml.load(metafile.read())
         return meta
