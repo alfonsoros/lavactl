@@ -150,7 +150,7 @@ class LavaServer(object):
             if env in os.environ and not config.has_option(param):
                 config.set(param, os.environ[env])
 
-		# Check if the required parameters are available
+        # Check if the required parameters are available
         for param in REQUIRED_PARAMETERS:
             if not config.has_option(param):
                 self._logger.error("Missing parameter %s", param)
@@ -185,7 +185,7 @@ class LavaServer(object):
             raise err
 
     def validate(self, job_definition):
-		"""Validate a job definition"""
+        """Validate a job definition"""
         try:
             self._rpc.scheduler.validate_yaml(str(job_definition))
             self._logger.debug("Job definition validated")
@@ -200,7 +200,7 @@ class LavaServer(object):
             raise err
 
     def check_tests_results(self, job):
-		"""Check if all the tests of a job are passed"""
+        """Check if all the tests of a job are passed"""
         report = yaml.load(self._rpc.results.get_testjob_results_yaml(job))
         results = [test.get('result') for test in report]
         self._logger.info("PASSED %d", results.count('pass'))
@@ -208,7 +208,7 @@ class LavaServer(object):
         return all(result == "pass" for result in results)
 
     def submit(self, job_definition, wait=True):
-		"""Submit a job to the LAVA server"""
+        """Submit a job to the LAVA server"""
         job_id = self._rpc.scheduler.submit_job(str(job_definition))
 
         if not job_id:
@@ -242,7 +242,7 @@ class LavaServer(object):
 
 
 class FTPStorage(object):
-	"""The FTP server which is used to store images for testing"""
+    """The FTP server which is used to store images for testing"""
 
     def __init__(self, logger=None, config=None):
         self._logger = logger or logging.getLogger(__name__)
@@ -276,7 +276,7 @@ class FTPStorage(object):
             if env in os.environ and not config.has_option(param):
                 config.set(param, os.environ[env])
 
-		# Check if all the required parameters are available
+        # Check if all the required parameters are available
         for param in REQUIRED_PARAMETERS:
             if not config.has_option(param):
                 self._logger.error("Missing parameter %s", param)
@@ -304,8 +304,8 @@ class FTPStorage(object):
         self._transport.close()
 
     def upload(self, path, prefix=None, compressed=False):
-		"""Upload a file to the FTP server"""
-		
+        """Upload a file to the FTP server"""
+        
         name = os.path.basename(path)
 
         # Prepend the prefix
@@ -322,7 +322,7 @@ class FTPStorage(object):
             path = path + '.gz'
             name = name + '.gz'
 
-		# Display the upload progress on a progress bar
+        # Display the upload progress on a progress bar
         bar = Bar('Uploading %s' % os.path.basename(path))
 
         def update_progress(current, total):
@@ -360,7 +360,7 @@ class FTPStorage(object):
             metaf.write(yaml.dump(meta, default_flow_style=False))
 
     def list_images(self):
-		"""List the images available in the FTP server"""
+        """List the images available in the FTP server"""
         dirs = [d for d in
                 self._sftp.listdir_attr('.') if stat.S_ISDIR(d.st_mode)]
 
@@ -376,7 +376,7 @@ class FTPStorage(object):
                 continue
 
     def get_metadata(self, image):
-		"""Read meta-information of an image"""
+        """Read meta-information of an image"""
         with self._sftp.open(image + '/img-meta.yaml') as metafile:
             meta = yaml.load(metafile.read())
         return meta

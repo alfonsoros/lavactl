@@ -180,7 +180,7 @@ class JobDefinition(object):
         return None
 
     def set(self, key, value):
-		"""Set the value for a key in the job configuration"""
+        """Set the value for a key in the job configuration"""
         keys = key.split('.')
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
         cont = reduce(access, keys[:-1], self._yaml)
@@ -192,20 +192,20 @@ class JobDefinition(object):
 
     @lava_server.getter
     def lava_server(self):
-		"""Get the LAVA server"""
+        """Get the LAVA server"""
         if getattr(self, '_lava_server', None) is None:
             self._lava_server = LavaServer(
                 config=self._conf, logger=self._logger)
         return self._lava_server
 
     def valid(self):
-		"""Validate the job definition using the LAVA server"""
+        """Validate the job definition using the LAVA server"""
         if getattr(self, '_valid', None) is None:
             self._valid = self.lava_server.validate(self.__str__())
         return self._valid
 
     def submit(self, wait=True):
-		"""Submit the job to the LAVA server"""
+        """Submit the job to the LAVA server"""
         if self.valid():
             result = self.lava_server.submit(self.__str__(), wait)
         else:

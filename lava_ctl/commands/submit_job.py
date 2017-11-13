@@ -39,7 +39,7 @@ class Command(object):
         self._logger = logger or logging.getLogger(__name__)
 
     def add_arguments(self, subparsers):
-		"""Define the arguments of the command"""
+        """Define the arguments of the command"""
         self.parser = subparsers.add_parser(
             'submit-job', help='submit lava job definition')
         self.parser.add_argument(
@@ -57,7 +57,7 @@ class Command(object):
             raise RuntimeError('File does not exist', filename)
 
         try:
-			#Create a LAVA job definition
+            #Create a LAVA job definition
             job = JobDefinition(filename=filename,
                                 config=config, logger=self._logger)
         except Exception, e:
@@ -68,7 +68,7 @@ class Command(object):
             self._logger.error("Could not instantiate a LAVA Job definition")
             sys.exit(1)
 
-		#Submit the job to the LAVA server
+        #Submit the job to the LAVA server
         success = job.submit(wait=not args.no_wait)
 
         if success:

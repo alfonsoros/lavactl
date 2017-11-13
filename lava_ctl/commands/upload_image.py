@@ -38,7 +38,7 @@ class Command(object):
         self._logger = logger or logging.getLogger(__name__)
 
     def add_arguments(self, subparsers):
-		"""Define the arguments of the command"""
+        """Define the arguments of the command"""
         self.parser = subparsers.add_parser(
             'upload-image', help='uploads an image to the LAVA FTP server')
         self.parser.add_argument(
@@ -52,13 +52,13 @@ class Command(object):
         self.parser.set_defaults(evaluate=self.evaluate)
 
     def evaluate(self, args, config):
-	
+    
         # Check if the image files exist
         for path in [args.kernel, args.rootfs]:
             if not os.path.exists(path):
                 raise RuntimeError('File does not exist', path)
 
-		#Add a default prefix if not specified by the user
+        #Add a default prefix if not specified by the user
         if not args.prefix:
             args.prefix = args.device + datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d')
 

@@ -34,7 +34,7 @@ class Command(object):
         self._logger = logger or logging.getLogger(__name__)
 
     def add_arguments(self, subparsers):
-		"""Define the arguments of the command"""
+        """Define the arguments of the command"""
         self.parser = subparsers.add_parser(
             'list-images', help='list the images in the ftp server')
         self.parser.set_defaults(evaluate=self.evaluate)

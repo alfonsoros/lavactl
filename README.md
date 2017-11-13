@@ -161,7 +161,7 @@ lava:
       timeout: 600 # 10 min
 
   publisher:
-    port: 80 #Replace with the port number of the publisher
+    port: 5500 #Replace with the port number of the publisher
 
   sftp:
     port: 22 #Replace with the port number of the SFTP server
