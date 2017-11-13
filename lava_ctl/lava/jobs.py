@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Copyright (c) 2017 Evosoft GmbH
+Copyright (c) 2017 Siemens AG
+Author: Alfonso Ros Dos Santos
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
