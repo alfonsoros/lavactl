@@ -38,11 +38,6 @@ ENV LAVA_STORAGE_FTP_PASS=$ftp_pass
 ADD . /src
 WORKDIR /lava-ctl
 
-RUN mkdir -p /root/.ssh
-RUN ssh-keyscan code.siemens.com >> /root/.ssh/known_hosts
-RUN echo "$ssh_priv" > /root/.ssh/id_rsa
-RUN chmod 600 /root/.ssh/id_rsa
-
 RUN pip install -e /src/
 RUN (cd /src && python setup.py install)
 

@@ -32,7 +32,6 @@ with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
 setup(
     name='lava-ctl',
     version=version,
-    url='https://code.siemens.com/iot/DOPS/lava-ctl',
     author='Alfonso Ros',
     author_email='alfonso.ros-dos-santos@evosoft.com',
     description='LAVA CI setup tool',

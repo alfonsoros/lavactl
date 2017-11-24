@@ -21,8 +21,6 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
 
 # LAVA Control
-[![pipeline 
-status](https://code.siemens.com/iot/DOPS/lava-ctl/badges/master/pipeline.svg)](https://code.siemens.com/iot/DOPS/lava-ctl/commits/master)
 
 [LAVA](https://www.linaro.org/initiatives/lava/) is a framework for testing 
 Linux images within different hardware devices. It offers the functionality 
