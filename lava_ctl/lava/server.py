@@ -338,7 +338,7 @@ class FTPStorage(object):
         return file_url
 
     def upload_image(self, prefix, kernel, rootfs, device='qemux86', fscompressed=True):
-        """Upload the files of a EBS image and stores the meta information
+        """Uploads the files of an EBS image and stores the meta information
 
 
         TODO: fix issue with local qemu getting a http:// image
@@ -349,11 +349,28 @@ class FTPStorage(object):
         # Store meta-information about the image
         meta = {}
         meta['device'] = device
-        meta[
-            'kernel'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(kernel))
-        meta[
-            'rootfs'] = 'file:///data/lava-ftp/%s/%s.gz' % (prefix, os.path.basename(rootfs))
+        meta['kernel'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(kernel))
+        meta['rootfs'] = 'file:///data/lava-ftp/%s/%s.gz' % (prefix, os.path.basename(rootfs))
+        meta['image'] = None
+        meta['patch'] = None
         meta['compressed'] = True
+
+        metafile = '/data/lava-ftp/%s/img-meta.yaml' % prefix
+        with self._sftp.open(metafile, 'w') as metaf:
+            metaf.write(yaml.dump(meta, default_flow_style=False))
+
+    def upload_image_iot(self, prefix, image, patch, device='iot2000'):
+        """Uploads the files of an EBS image and stores the meta information"""
+        self.upload(image, prefix=prefix)
+        self.upload(patch, prefix=prefix)
+
+        # Store meta-information about the image
+        meta = {}
+        meta['device'] = device
+        meta['kernel'] = None
+        meta['rootfs'] = None
+        meta['image'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(image))
+        meta['patch'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(patch))
 
         metafile = '/data/lava-ftp/%s/img-meta.yaml' % prefix
         with self._sftp.open(metafile, 'w') as metaf:
