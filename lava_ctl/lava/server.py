@@ -354,16 +354,16 @@ class FTPStorage(object):
 
         TODO: fix issue with local qemu getting a http:// image
         """
-        self.upload(kernel, prefix=prefix)
-        self.upload(rootfs, prefix=prefix, compressed=True)
+        kernel_url = self.upload(kernel, prefix=prefix)
+        rootfs_url = self.upload(rootfs, prefix=prefix, compressed=True)
 
         # Store meta-information about the image
         meta = {}
         meta['device'] = device
-        meta['kernel'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(kernel))
-        meta['rootfs'] = 'file:///data/lava-ftp/%s/%s.gz' % (prefix, os.path.basename(rootfs))
-        meta['image'] = None
-        meta['patch'] = None
+        meta['kernel'] = kernel_url
+        meta['rootfs'] = rootfs_url
+        meta['image'] = ''
+        meta['patch'] = ''
         meta['compressed'] = True
 
         metafile = '/data/lava-ftp/%s/img-meta.yaml' % prefix
@@ -372,16 +372,16 @@ class FTPStorage(object):
 
     def upload_image_iot(self, prefix, image, patch, device='iot2000'):
         """Uploads the files of an EBS image and stores the meta information"""
-        self.upload(image, prefix=prefix)
-        self.upload(patch, prefix=prefix)
+        image_url = self.upload(image, prefix=prefix)
+        patch_url = self.upload(patch, prefix=prefix)
 
         # Store meta-information about the image
         meta = {}
         meta['device'] = device
-        meta['kernel'] = None
-        meta['rootfs'] = None
-        meta['image'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(image))
-        meta['patch'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(patch))
+        meta['kernel'] = ''
+        meta['rootfs'] = ''
+        meta['image'] = image_url
+        meta['patch'] = patch_url
 
         metafile = '/data/lava-ftp/%s/img-meta.yaml' % prefix
         with self._sftp.open(metafile, 'w') as metaf:
