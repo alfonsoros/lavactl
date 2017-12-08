@@ -106,7 +106,7 @@ the SFTP server. Alternatively, you can set the environment variables
 Once the information is set, you can upload an image using the command:
 
 ```bash
-./lava-ctl.py upload-image --device qemux86 --prefix latest kernel-file.bin rootfs-file.ext4.gz
+./lava-ctl.py upload-image --device qemux86 --prefix latest --kernel kernel-file.bin --rootfs rootfs-file.ext4.gz
 ```
 
 where the `--prefix` option is used as an identifier for the uploaded image. 
@@ -197,7 +197,7 @@ You can overwrite this configuration with your own one by giving the path to
 your configuration file with the `-c` flag. For example:
 
 ```
-lava-ctl -c /path/to/my/config.cfg upload-image kernel.bin filesystem.ext4.gz
+lava-ctl -c /path/to/my/config.cfg upload-image --kernel kernel.bin --rootfs filesystem.ext4.gz
 ```
 
 It is also possible to overwrite individual parameters using the `-p` 
@@ -205,5 +205,5 @@ flag. To specify parameters, we use the dot-notation. For example, to
 specify the LAVA user name, you can run:
 
 ```
-lava-ctl -p lava.server.user=myuser upload-image kernel.bin filesystem.ext4.gz
+lava-ctl -p lava.server.user=myuser upload-image --kernel kernel.bin --rootfs filesystem.ext4.gz
 ```

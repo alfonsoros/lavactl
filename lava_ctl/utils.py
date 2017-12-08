@@ -31,7 +31,7 @@ class TimeoutError(Exception):
     pass
 
 def timeout(seconds=10, logger=None):
-	"""Handle the timeout of a submitted job"""
+    """Handle the timeout of a submitted job"""
     logger = logger or logging.getLogger(__name__ + '.timeout')
     def decorator(func):
         @wraps(func)

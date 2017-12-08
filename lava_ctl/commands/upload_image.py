@@ -42,19 +42,32 @@ class Command(object):
         self.parser = subparsers.add_parser(
             'upload-image', help='uploads an image to the LAVA FTP server')
         self.parser.add_argument(
-            'kernel', type=str, metavar='KERNEL', help='kernel file')
-        self.parser.add_argument(
-            'rootfs', type=str, metavar='ROOTFS', help='rootfs file')
-        self.parser.add_argument(
             '--device', type=str, default='qemux86', help='device type')
+        self.parser.add_argument(
+            '--kernel', type=str, help='kernel file')
+        self.parser.add_argument(
+            '--rootfs', type=str, help='rootfs file')
+        self.parser.add_argument(
+            '--image', type=str, help='image file') 
+        self.parser.add_argument(
+            '--patch', type=str, help='patch file') 
         self.parser.add_argument(
             '--prefix', type=str, help='identifier for the image')
         self.parser.set_defaults(evaluate=self.evaluate)
 
     def evaluate(self, args, config):
-    
-        # Check if the image files exist
-        for path in [args.kernel, args.rootfs]:
+        # Special behavior for IoT2000 devices
+        iot_device = (args.device == 'iot2000')
+
+        # Check if the required arguments are provided
+        REQUIRED = ['image', 'patch'] if iot_device else ['kernel', 'rootfs']
+        for param in REQUIRED:
+            if getattr(args, param) is None:
+                self.parser.error('Argument %s is required!'%(param))
+
+        # Check if the required files exist
+        for param in REQUIRED:
+            path = getattr(args, param)
             if not os.path.exists(path):
                 raise RuntimeError('File does not exist', path)
 
@@ -64,7 +77,10 @@ class Command(object):
 
         # Upload the files
         with FTPStorage(config=config, logger=self._logger) as remote:
-            remote.upload_image(args.prefix, args.kernel, args.rootfs, device=args.device)
+            if iot_device: 
+                remote.upload_image_iot(args.prefix, args.image, args.patch, device=args.device) 
+            else:
+                remote.upload_image(args.prefix, args.kernel, args.rootfs, device=args.device)
 
     def __repr__(self):
         return 'Command(upload-image)'

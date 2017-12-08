@@ -330,6 +330,17 @@ class FTPStorage(object):
             bar.max = total
             bar.update()
 
+        # Check if prefix folder already exists
+        try:
+          if not stat.S_ISDIR(self._sftp.stat(prefix).st_mode):
+            # exists but is not a file
+            raise RuntimeError('%s already exists but is not a directory' % prefix)
+
+        except IOError:
+          # Create the prefix folder
+          self._logger.debug('Creating the prefix folder %s', prefix)
+          self._sftp.mkdir(prefix)
+
         # The file is already in the FTP-server, no need for re-upload
         self._logger.debug('Uploading %s', path)
         self._sftp.put(path, name, callback=update_progress)
@@ -338,22 +349,39 @@ class FTPStorage(object):
         return file_url
 
     def upload_image(self, prefix, kernel, rootfs, device='qemux86', fscompressed=True):
-        """Upload the files of a EBS image and stores the meta information
+        """Uploads the files of an EBS image and stores the meta information
 
 
         TODO: fix issue with local qemu getting a http:// image
         """
-        self.upload(kernel, prefix=prefix)
-        self.upload(rootfs, prefix=prefix, compressed=True)
+        kernel_url = self.upload(kernel, prefix=prefix)
+        rootfs_url = self.upload(rootfs, prefix=prefix, compressed=True)
 
         # Store meta-information about the image
         meta = {}
         meta['device'] = device
-        meta[
-            'kernel'] = 'file:///data/lava-ftp/%s/%s' % (prefix, os.path.basename(kernel))
-        meta[
-            'rootfs'] = 'file:///data/lava-ftp/%s/%s.gz' % (prefix, os.path.basename(rootfs))
+        meta['kernel'] = kernel_url
+        meta['rootfs'] = rootfs_url
+        meta['image'] = ''
+        meta['patch'] = ''
         meta['compressed'] = True
+
+        metafile = '/data/lava-ftp/%s/img-meta.yaml' % prefix
+        with self._sftp.open(metafile, 'w') as metaf:
+            metaf.write(yaml.dump(meta, default_flow_style=False))
+
+    def upload_image_iot(self, prefix, image, patch, device='iot2000'):
+        """Uploads the files of an EBS image and stores the meta information"""
+        image_url = self.upload(image, prefix=prefix)
+        patch_url = self.upload(patch, prefix=prefix)
+
+        # Store meta-information about the image
+        meta = {}
+        meta['device'] = device
+        meta['kernel'] = ''
+        meta['rootfs'] = ''
+        meta['image'] = image_url
+        meta['patch'] = patch_url
 
         metafile = '/data/lava-ftp/%s/img-meta.yaml' % prefix
         with self._sftp.open(metafile, 'w') as metaf:

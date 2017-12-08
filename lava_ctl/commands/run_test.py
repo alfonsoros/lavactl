@@ -69,13 +69,23 @@ class Command(object):
 
     def check_meta(self, meta):
         """Validate image metadata"""
-        REQUIRED = ['device', 'kernel', 'rootfs']
+        if 'device' not in meta:
+            raise RuntimeError('Missing job configuration', ['device'])
+
+        REQUIRED = ['image', 'patch'] if meta['device']=='iot2000' else ['kernel', 'rootfs']
         missing = [p for p in REQUIRED if p not in meta]
         if len(missing) > 0:
             raise RuntimeError('Missing job configuration', missing)
 
-        if meta['rootfs'].endswith('.gz'):
+        if 'rootfs' in meta and meta['rootfs'].endswith('.gz'):
             meta['compressed'] = True
+
+        if meta['device']=='iot2000':
+            meta['kernel'] = None
+            meta['rootfs'] = None
+        else:
+            meta['image'] = None
+            meta['patch'] = None
 
         return meta
 

@@ -54,19 +54,19 @@ class ConfigManager(object):
         update(self._config, config)
 
     def get(self, key):
-		"""Get the value for a key from the configuration"""
+	"""Get the value for a key from the configuration"""
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
         return reduce(access, key.split('.'), self._config)
 
     def set(self, key, value):
-		"""Set the value for a key in the configuration"""
+	"""Set the value for a key in the configuration"""
         keys = key.split('.')
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
         cont = reduce(access, keys[:-1], self._config)
         cont[keys[-1]] = value
 
     def has_option(self, key):
-		"""Check if a key is available in the configuration"""
+	"""Check if a key is available in the configuration"""
         try:
             self.get(key)
             return True
