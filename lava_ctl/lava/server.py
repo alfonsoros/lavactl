@@ -157,7 +157,7 @@ class LavaServer(object):
                 raise RuntimeError("Missing configuration", param)
 
         host = config.get('lava.server.host')
-        port = config.get('lava.server.port')
+        port = int(config.get('lava.server.port'))
         user = config.get('lava.server.user')
         token = config.get('lava.server.token')
 
@@ -170,10 +170,10 @@ class LavaServer(object):
 
         # Store the publisher url
         self._pub_url = 'tcp://%s:%s' % (host,
-                                         config.get('lava.publisher.port'))
+                                         int(config.get('lava.publisher.port')))
 
         # timeout for the job
-        self._timeout = config.get('lava.server.jobs.timeout')
+        self._timeout = int(config.get('lava.server.jobs.timeout'))
 
         try:
             version = self._rpc.system.version()
@@ -283,8 +283,8 @@ class FTPStorage(object):
                 raise RuntimeError("Missing configuration", param)
 
         host = config.get('lava.server.host')
-        http_port = config.get('lava.server.port')
-        port = config.get('lava.sftp.port')
+        http_port = int(config.get('lava.server.port'))
+        port = int(config.get('lava.sftp.port'))
         usr = config.get('lava.sftp.user')
         pwd = config.get('lava.sftp.pass')
 
