@@ -46,7 +46,17 @@ class Command(object):
         self.parser = subparsers.add_parser(
             'run-test', help='Run tests on an image')
         self.parser.add_argument(
-            '--image', type=str, metavar='IMAGE NAME', help='image to test')
+            '--image_prefix', type=str, metavar='IMAGE PREFIX', help='Reference for an image stored in the FTP server')
+        self.parser.add_argument(
+            '--device', type=str, help='device type')
+        self.parser.add_argument(
+            '--kernel', type=str, help='kernel file')
+        self.parser.add_argument(
+            '--rootfs', type=str, help='rootfs file')
+        self.parser.add_argument(
+            '--image', type=str, help='image file')
+        self.parser.add_argument(
+            '--patch', type=str, help='patch file')
         self.parser.add_argument(
             '--repo', type=str, metavar='GIT URL', help='git repo URL')
         self.parser.add_argument(
@@ -59,10 +69,10 @@ class Command(object):
             '--no-wait', action='store_true', help='Don\'t wait for job result')
         self.parser.set_defaults(evaluate=self.evaluate)
 
-    def load_remote_meta(self, image_name, config):
+    def load_remote_meta(self, image_prefix, config):
         """Read meta-information of the image"""    
         with FTPStorage(config=config, logger=self._logger) as remote:
-            meta = remote.get_metadata(image_name)
+            meta = remote.get_metadata(image_prefix)
             self._logger.debug('Image metadata\n%s',
                                yaml.dump(meta, default_flow_style=False))
         return meta
@@ -73,7 +83,7 @@ class Command(object):
             raise RuntimeError('Missing job configuration', ['device'])
 
         REQUIRED = ['image', 'patch'] if meta['device']=='iot2000' else ['kernel', 'rootfs']
-        missing = [p for p in REQUIRED if p not in meta]
+        missing = [p for p in REQUIRED if (p not in meta or meta[p] is None)]
         if len(missing) > 0:
             raise RuntimeError('Missing job configuration', missing)
 
@@ -119,16 +129,23 @@ class Command(object):
         self._logger.debug("test file content:\n%s",
                            yaml.dump(test, default_flow_style=False))
 
-        if args.image:
-            meta = self.load_remote_meta(args.image, config)
+        # Arguments contain a reference to an image stored in the FTP server
+        if args.image_prefix:
+            meta = self.load_remote_meta(args.image_prefix, config)
 
-        #'image' is a reference to an image in the FTP server
-        elif 'image' in test:
-            if isinstance(test['image'], basestring):
-                meta = self.load_remote_meta(test['image'], config)
-            else:
-                meta = self.check_meta(test['image'])
+        # Arguments contain image data
+        elif args.device:
+            meta = self.check_meta(vars(args))
 
+        # Test file contains a reference to an image stored in the FTP server
+        elif 'image_prefix' in test:
+            meta = self.load_remote_meta(test['image_prefix'], config)
+
+        # Test file contains image data
+        elif 'image_data' in test:
+            meta = self.check_meta(test['image_data'])
+
+        # If no image data available, proceed with a default image
         else:
             meta = self.check_meta(config.get('default_image'))
 
