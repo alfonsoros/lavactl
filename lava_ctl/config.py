@@ -54,25 +54,25 @@ class ConfigManager(object):
         update(self._config, config)
 
     def get(self, key):
-	"""Get the value for a key from the configuration"""
+        """Get the value for a key from the configuration"""
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
         return reduce(access, key.split('.'), self._config)
 
     def set(self, key, value):
-	"""Set the value for a key in the configuration"""
+        """Set the value for a key in the configuration"""
         keys = key.split('.')
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
         cont = reduce(access, keys[:-1], self._config)
+        self.logger.debug("[config] setting key: %s, to value: %s" % (key, value))
         cont[keys[-1]] = value
 
     def has_option(self, key):
-	"""Check if a key is available in the configuration"""
+        """Check if a key is available in the configuration"""
         try:
             self.get(key)
             return True
         except KeyError:
             return False
-
 
     def __init__(self, filename=None, logger=None):
         super(ConfigManager, self).__init__()
@@ -82,7 +82,8 @@ class ConfigManager(object):
         self._config = self.load_file(
             resource_filename('lava_ctl', 'resources/default_conf.yaml'))
 
-		# Override default configuration with the user defined configuration file
+        # Override default configuration with the user defined configuration
+        # file
         if filename:
             user_config = self.load_file(filename)
             self.deep_update(user_config)

@@ -45,6 +45,7 @@ from progress.bar import Bar
 from lava_ctl.config import ConfigManager
 from lava_ctl.utils import timeout, TimeoutError
 
+
 class JobListener(object):
     """Listens for the ZMQ notifications coming from the LAVA publisher.
 
@@ -133,6 +134,9 @@ class LavaServer(object):
 
         """
         ENVIRONMENT_PARAMETERS = {
+            'LAVA_HOST': 'lava.server.host',
+            'LAVA_PORT': 'lava.server.port',
+            'LAVA_PUBLISHER_PORT': 'lava.publisher.port',
             'LAVA_USER': 'lava.server.user',
             'LAVA_TOKEN': 'lava.server.token',
         }
@@ -147,7 +151,7 @@ class LavaServer(object):
 
         # Check environment variables
         for env, param in ENVIRONMENT_PARAMETERS.iteritems():
-            if env in os.environ and not config.has_option(param):
+            if env in os.environ:
                 config.set(param, os.environ[env])
 
         # Check if the required parameters are available
