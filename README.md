@@ -77,8 +77,6 @@ docker pull docker.web-of-systems.com/lava-ctl
 | Command                              | Description                                                     |
 |--------------------------------------|-----------------------------------------------------------------|
 | [submit-job](#submitting-a-lava-job) | Submits a LAVA job definition from a file                       |
-| [upload-image](#uploading-an-image)  | Uploads a Linux image to the FTP server                         |
-| [list-images](#listing-the-images)   | Lists the identifiers for the images already in the LAVA server |
 | [run-test](#running-a-test-job)      | Test an image                                                   |
 
 
@@ -92,46 +90,6 @@ how to write these job definitions.
 ```bash
 lava-ctl submit-job job.yaml
 ```
-
-## Uploading an image
-
-In order to use this feature, you have to set an SFTP server in the same host 
-as the LAVA master, where we upload and store different images for testing. 
-For using the FTP server, it is necessary to specify the port of the 
-server using the parameter `lava.sftp.port`. Additionally, you could use the 
-`lava.sftp.user` and `lava.sftp.pass` to specify the user and the password for 
-the SFTP server. Alternatively, you can set the environment variables 
-`LAVA_STORAGE_FTP_USER` and `LAVA_STORAGE_FTP_PASS` with the same information.
-
-Once the information is set, you can upload an image using the command:
-
-```bash
-./lava-ctl.py upload-image --device qemux86 --prefix latest --kernel kernel-file.bin --rootfs rootfs-file.ext4.gz
-```
-
-where the `--prefix` option is used as an identifier for the uploaded image. 
-After uploading it to the FTP server, you can use this image for testing by 
-simply referencing to the image `prefix`. For example, you can create a 
-`test.yaml` with the following content:
-
-```yaml
-image: "latest"
-```
-
-and run the test with: `./lava-ctl.py run-test test.yaml`
-
-## Listing the images
-
-All the images uploaded using the [upload-image](#uploading-an-image) command, 
-are stored together with the meta-data necessary to reference them in tests. 
-You can list the current available images using the `list-images` command.
-
-```bash
-./lava-ctl.py list-images
-```
-
-You can refer to these images in the test file.
-
 
 ## Running a Test Job
 
@@ -182,9 +140,6 @@ lava:
 
   publisher:
     port: 5500 #Replace with the port number of the publisher
-
-  sftp:
-    port: 22 #Replace with the port number of the SFTP server
 
 default_image:
   device: qemux86  #Replace with the device type of the default image

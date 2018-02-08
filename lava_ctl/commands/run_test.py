@@ -29,7 +29,6 @@ import sys
 import yaml
 import shutil
 
-from lava_ctl.lava.server import FTPStorage
 from lava_ctl.lava.jobs import Job, JobDefinition
 from lava_ctl.lava.tests import Test
 
@@ -42,11 +41,9 @@ class Command(object):
         self._logger = logger or logging.getLogger(__name__)
 
     def add_arguments(self, subparsers):
-        """Define the arguments of the command"""        
+        """Define the arguments of the command"""
         self.parser = subparsers.add_parser(
             'run-test', help='Run tests on an image')
-        self.parser.add_argument(
-            '--image_prefix', type=str, metavar='IMAGE PREFIX', help='Reference for an image stored in the FTP server')
         self.parser.add_argument(
             '--device', type=str, help='device type')
         self.parser.add_argument(
@@ -69,20 +66,13 @@ class Command(object):
             '--no-wait', action='store_true', help='Don\'t wait for job result')
         self.parser.set_defaults(evaluate=self.evaluate)
 
-    def load_remote_meta(self, image_prefix, config):
-        """Read meta-information of the image"""    
-        with FTPStorage(config=config, logger=self._logger) as remote:
-            meta = remote.get_metadata(image_prefix)
-            self._logger.debug('Image metadata\n%s',
-                               yaml.dump(meta, default_flow_style=False))
-        return meta
-
     def check_meta(self, meta):
         """Validate image metadata"""
         if 'device' not in meta:
             raise RuntimeError('Missing job configuration', ['device'])
 
-        REQUIRED = ['image', 'patch'] if meta['device']=='iot2000' else ['kernel', 'rootfs']
+        REQUIRED = ['image', 'patch'] if meta[
+            'device'] == 'iot2000' else ['kernel', 'rootfs']
         missing = [p for p in REQUIRED if (p not in meta or meta[p] is None)]
         if len(missing) > 0:
             raise RuntimeError('Missing job configuration', missing)
@@ -90,7 +80,7 @@ class Command(object):
         if 'rootfs' in meta and meta['rootfs'].endswith('.gz'):
             meta['compressed'] = True
 
-        if meta['device']=='iot2000':
+        if meta['device'] == 'iot2000':
             meta['kernel'] = None
             meta['rootfs'] = None
         else:
@@ -125,42 +115,35 @@ class Command(object):
         if args.repo:
             shutil.rmtree(repopath)
 
-
         self._logger.debug("test file content:\n%s",
                            yaml.dump(test, default_flow_style=False))
 
-        # Arguments contain a reference to an image stored in the FTP server
-        if args.image_prefix:
-            meta = self.load_remote_meta(args.image_prefix, config)
-
         # Arguments contain image data
-        elif args.device:
-            meta = self.check_meta(vars(args))
+        if not args.device:
+            raise RuntimeError("--device is mandatory")
 
-        # Test file contains a reference to an image stored in the FTP server
-        elif 'image_prefix' in test:
-            meta = self.load_remote_meta(test['image_prefix'], config)
+        meta = self.check_meta(vars(args))
 
         # Test file contains image data
-        elif 'image_data' in test:
+        if 'image_data' in test:
             meta = self.check_meta(test['image_data'])
 
         # If no image data available, proceed with a default image
         else:
             meta = self.check_meta(config.get('default_image'))
 
-        #Create the minimal configuration to run the LAVA job
+        # Create the minimal configuration to run the LAVA job
         job = Job(config=meta, logger=self._logger)
 
-        #Add the test information to the job
+        # Add the test information to the job
         if 'tests' in test and len(test['tests']) > 0:
             for conf in test['tests']:
                 job.add_test(Test(config=conf, logger=self._logger))
 
-        #Create a LAVA job definition from the available configuration
+        # Create a LAVA job definition from the available configuration
         jobdef = JobDefinition(job=job, config=config, logger=self._logger)
 
-        #Submit the job to the LAVA server
+        # Submit the job to the LAVA server
         success = jobdef.submit(wait=not args.no_wait)
 
         if success:

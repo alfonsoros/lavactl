@@ -31,9 +31,6 @@ lava:
   publisher:
     port: 5500 #Replace with the port number of the publisher
 
-  sftp:
-    port: 22 #Replace with the port number of the SFTP server
-
 default_image:
   device: qemux86  #Replace with the device type of the default image
   kernel: "http://host/linux-kernel.bin"  #Replace with the url of the kernal image
