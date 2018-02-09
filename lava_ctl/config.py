@@ -23,10 +23,58 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 """
 
+import copy
 import yaml
 import logging
 import collections
+
+from cerberus import Validator
 from pkg_resources import resource_filename
+
+
+CONFIG_SCHEMA = {
+    'default_image': {
+        'type': 'dict',
+                'schema': {
+                    'compressed': {'type': 'boolean'},
+                    'device': {'type': 'string'},
+                    'kernel': {'type': 'string'},
+                    'rootfs': {'type': 'string'},
+                }
+    },
+    'lava': {
+        'type': 'dict',
+                'schema': {
+                    'server': {
+                        'type': 'dict',
+                        'schema': {
+                            'host': {'type': 'string'},
+                            'port': {'type': 'number'},
+                            'user': {'type': 'string'},
+                            'token': {'type': 'string'},
+                            'jobs': {
+                                'type': 'dict',
+                                'schema': {
+                                    'timeout': {'type': 'number'},
+                                },
+                            },
+                        }
+                    },
+                    'publisher': {
+                        'type': 'dict',
+                        'schema': {
+                            'port': {'type': 'number'}
+                        }
+                    }
+                }
+    },
+}
+
+
+class ConfigValidator(Validator):
+    """lavactl Configuration Validator"""
+    def __init__(self, *args, **kwargs):
+        super(ConfigValidator, self).__init__(*args, **kwargs)
 
 
 class ConfigManager(object):
@@ -62,10 +110,18 @@ class ConfigManager(object):
         """Set the value for a key in the configuration"""
         keys = key.split('.')
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
+
         cont = reduce(access, keys[:-1], self._config)
-        self.logger.debug(
-            "[config] setting key: %s, to value: %s" % (key, value))
+
+        self.logger.debug("setting key: %s, to value: %s" % (key, value))
         cont[keys[-1]] = value
+
+        self.validate()
+
+    def validate(self):
+        if not self._validator.validate(self._config, CONFIG_SCHEMA):
+            raise RuntimeError('Invalid config parameters: %s' %
+                               self._validator.errors)
 
     def has_option(self, key):
         """Check if a key is available in the configuration"""
@@ -75,19 +131,30 @@ class ConfigManager(object):
         except KeyError:
             return False
 
+    def write(self):
+        with open(self._config_file, 'w') as cf:
+            cf.write(yaml.dump(self._config))
+
     def __init__(self, filename=None, logger=None):
         super(ConfigManager, self).__init__()
         self.logger = logger or logging.getLogger(__name__ + '.ConfigManager')
 
+        self._config_file = resource_filename(
+            'lava_ctl', 'resources/lavactl_conf.yaml')
+
         # Load static configuration
-        self._config = self.load_file(
-            resource_filename('lava_ctl', 'resources/lavactl_conf.yaml'))
+        self._config = self.load_file(self._config_file)
+
+        # Schema validator
+        self._validator = ConfigValidator()
 
         # Override default configuration with the user defined configuration
         # file
         if filename:
             user_config = self.load_file(filename)
             self.deep_update(user_config)
+
+        self.validate()
 
     def __repr__(self):
         return yaml.dump(self._config)
