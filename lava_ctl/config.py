@@ -63,7 +63,8 @@ class ConfigManager(object):
         keys = key.split('.')
         access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
         cont = reduce(access, keys[:-1], self._config)
-        self.logger.debug("[config] setting key: %s, to value: %s" % (key, value))
+        self.logger.debug(
+            "[config] setting key: %s, to value: %s" % (key, value))
         cont[keys[-1]] = value
 
     def has_option(self, key):
@@ -78,9 +79,9 @@ class ConfigManager(object):
         super(ConfigManager, self).__init__()
         self.logger = logger or logging.getLogger(__name__ + '.ConfigManager')
 
-        # Load default configuration
+        # Load static configuration
         self._config = self.load_file(
-            resource_filename('lava_ctl', 'resources/default_conf.yaml'))
+            resource_filename('lava_ctl', 'resources/lavactl_conf.yaml'))
 
         # Override default configuration with the user defined configuration
         # file

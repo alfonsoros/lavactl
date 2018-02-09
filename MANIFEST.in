@@ -21,7 +21,5 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 include VERSION
-recursive-include bin *
-recursive-include lava_ctl/commands *
-recursive-include lava_ctl/lava *
-recursive-include lava_ctl/resources *
+include lava_ctl/resources/lavactl_conf.yaml
+recursive-include bin/lava-ctl
