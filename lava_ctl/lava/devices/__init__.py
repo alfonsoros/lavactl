@@ -1,0 +1,1 @@
+SUPPORTED_DEVICES = ['qemux86', 'iot2000']
