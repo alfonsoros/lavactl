@@ -123,14 +123,6 @@ class Command(object):
 
         meta = self.check_meta(vars(args))
 
-        # Test file contains image data
-        if 'image_data' in test:
-            meta = self.check_meta(test['image_data'])
-
-        # If no image data available, proceed with a default image
-        else:
-            meta = self.check_meta(config.get('default_image'))
-
         # Create the minimal configuration to run the LAVA job
         job = Job(config=meta, logger=self._logger)
 
