@@ -33,7 +33,88 @@ from pkg_resources import resource_filename
 
 from lava_ctl.config.schemas import LAVACTL_SCHEMA
 
-class ConfigManager(object):
+
+class Config(object):
+    """Base class for a Configuration dictionary
+
+    Every configuration structure is basically a dictionary of key-value pairs
+    that has a shape defined in a associated schema.
+
+    The dot-notation is used to access the recursive configuration
+    estructure. For example, if the configuration is:
+
+    { 'a': { 'b': { 'c': 42 } }
+
+    you can access the value of 'c' by using the key 'a.b.c'
+    """
+
+    def __init__(self, config={}, schema={}, logger=None):
+        """Config class initializer
+
+        keyword arguments:
+        config -- the dictionary with the key-value pairs (default {})
+        schema -- a dictionary with the Cerberus schema definition (default {})
+        logger -- the logger class (default None)
+        """
+        super(Config, self).__init__()
+        self._logger = logger or logging.getLogger(__name__)
+        self._log_extra = {'config': config, 'schema': schema}
+        self._logger.debug(
+            'config %(config)s with %(schema)s', extra=self._log_extra)
+        self._config = config
+        self._schema = schema
+        self._validator = Validator(self._schema)
+
+    def get(self, key):
+        """Return the value associated to the key
+        arguments:
+        key -- key string in dot-notation
+        """
+        try:
+            access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
+            return reduce(access, key.split('.'), self._config)
+        except (IndexError, KeyError):
+            self._logger.error('wrong config key %s', key)
+            raise KeyError('wrong config key', key)
+
+    def has(self, key):
+        """Return True if the key is present in the configuration
+        arguments:
+        key -- key string in dot-notation
+        """
+        try:
+            self.get(key)
+            return True
+        except KeyError:
+            return False
+
+    def set(self, key, value):
+        """Set the value for a key in the configuration
+        arguments:
+        key -- key string in dot-notation
+        value -- the value associated to the key
+        """
+        try:
+            access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
+            keys = key.split('.')
+            parents, key = keys[:-1], keys[-1]
+            conf = reduce(access, parents, self._config)
+            self._logger.debug("setting %s to %s", key, value)
+            conf[key] = value
+            self._logger.debug("validating config", extra=self._log_extra)
+            self._validate()
+        except (IndexError, KeyError):
+            self._logger.error('wrong config key %s', key)
+            raise KeyError('wrong config key', key)
+
+    def _validate(self):
+        if not self._validator.validate(self._config):
+            self._logger.error('configuration error %s',
+                               self._validator.errors)
+            raise RuntimeError('wrong configuration', self._validator.errors)
+
+
+class ConfigManager(Config):
     """Handle the App's configuration values"""
 
     def load_file(self, filename):
@@ -57,29 +138,6 @@ class ConfigManager(object):
             return d
         update(self._config, config)
 
-    def get(self, key):
-        """Get the value for a key from the configuration"""
-        access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
-        return reduce(access, key.split('.'), self._config)
-
-    def set(self, key, value):
-        """Set the value for a key in the configuration"""
-        keys = key.split('.')
-        access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
-
-        cont = reduce(access, keys[:-1], self._config)
-
-        self.logger.debug("setting key: %s, to value: %s" % (key, value))
-        cont[keys[-1]] = value
-
-        # Validate the change
-        self.validate()
-
-    def validate(self):
-        if not self._validator.validate(self._config):
-            raise RuntimeError('Invalid config parameters: %s' %
-                               self._validator.errors)
-
     def has_option(self, key):
         """Check if a key is available in the configuration"""
         try:
@@ -93,25 +151,15 @@ class ConfigManager(object):
             cf.write(yaml.dump(self._config))
 
     def __init__(self, filename=None, logger=None):
-        super(ConfigManager, self).__init__()
-        self.logger = logger or logging.getLogger(__name__ + '.ConfigManager')
-
-        self._config_file = resource_filename(
-            'lava_ctl', 'resources/lavactl_conf.yaml')
+        if not filename:
+            filename = resource_filename(
+                'lava_ctl', 'resources/lavactl_conf.yaml')
 
         # Load static configuration
-        self._config = self.load_file(self._config_file)
+        config = self.load_file(filename)
 
-        # Schema validator
-        self._validator = Validator(LAVACTL_SCHEMA)
-
-        # Override default configuration with the user defined configuration
-        # file
-        if filename:
-            user_config = self.load_file(filename)
-            self.deep_update(user_config)
-
-        self.validate()
+        super(ConfigManager, self).__init__(
+            config=config, schema=LAVACTL_SCHEMA, logger=logger)
 
     def __repr__(self):
         return yaml.dump(self._config)
