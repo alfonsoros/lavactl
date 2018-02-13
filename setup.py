@@ -45,6 +45,7 @@ setup(
         "Jinja2",
         "paramiko",
         "progress",
+        "cerberus",
         "PyYAML",
     ],
 
