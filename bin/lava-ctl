@@ -30,7 +30,7 @@ import os
 import logging
 
 from lava_ctl.config import ConfigManager
-from lava_ctl.commands import submit_job, run_test, config
+from lava_ctl.commands import submit_job, run_test, config, run
 
 # Settup basic logging
 # TODO: Make lava-ctl to load the logging configuration from the conf file
@@ -85,7 +85,7 @@ if __name__ == '__main__':
 
     # Sub-Commands
     commands = [cmd.Command(logger=logger) for cmd in [submit_job, run_test,
-                                                       config]]
+                                                       config, run]]
 
     for cmd in commands:
         cmd.add_arguments(sub_cmds)
