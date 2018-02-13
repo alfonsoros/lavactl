@@ -28,7 +28,7 @@ from cerberus import Validator
 from lava_ctl.lava.devices import SUPPORTED_DEVICES
 
 
-class TestValidator(Validator):
+class TestSchemaValidator(Validator):
     """Validates lavactl test definition"""
 
     def _validate_supported_device(self, supported, field, value):
