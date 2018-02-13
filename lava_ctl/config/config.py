@@ -131,12 +131,11 @@ class ConfigManager(Config):
             cf.write(yaml.dump(self._config))
 
     def __init__(self, filename=None, logger=None):
-        if not filename:
-            filename = resource_filename(
-                'lava_ctl', 'resources/lavactl_conf.yaml')
+        self._config_file = filename or resource_filename(
+            'lava_ctl', 'resources/lavactl_conf.yaml')
 
         # Load static configuration
-        config = self.load_file(filename)
+        config = self.load_file(self._config_file)
 
         super(ConfigManager, self).__init__(
             config=config, schema=LAVACTL_SCHEMA, logger=logger)
