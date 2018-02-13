@@ -156,7 +156,7 @@ class LavaServer(object):
 
         # Check if the required parameters are available
         for param in REQUIRED_PARAMETERS:
-            if not config.has_option(param):
+            if not config.has(param):
                 self._logger.error("Missing parameter %s", param)
                 raise RuntimeError("Missing configuration", param)
 

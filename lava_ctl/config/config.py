@@ -126,26 +126,6 @@ class ConfigManager(Config):
                 self.logger.error("YAML Error with file: %s", filename)
                 raise exc
 
-    def deep_update(self, config):
-        """Overrides current configuration with the values of the input one"""
-        def update(d, u):
-            for k, v in u.iteritems():
-                if isinstance(v, collections.Mapping):
-                    r = update(d.get(k, {}), v)
-                    d[k] = r
-                else:
-                    d[k] = u[k]
-            return d
-        update(self._config, config)
-
-    def has_option(self, key):
-        """Check if a key is available in the configuration"""
-        try:
-            self.get(key)
-            return True
-        except KeyError:
-            return False
-
     def write(self):
         with open(self._config_file, 'w') as cf:
             cf.write(yaml.dump(self._config))
