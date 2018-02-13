@@ -22,4 +22,5 @@
 
 include VERSION
 include lava_ctl/resources/lavactl_conf.yaml
+include lava_ctl/lava/devices/templates/*
 recursive-include bin/lava-ctl
