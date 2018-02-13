@@ -30,6 +30,7 @@ import shutil
 
 from lava_ctl.lava.jobs import Job, JobDefinition
 from lava_ctl.lava.test import Test, TestSchemaValidator
+from lava_ctl.lava.test.schema import TEST_SCHEMA
 
 
 class Command(object):
@@ -51,7 +52,15 @@ class Command(object):
 
     def evaluate(self, args, config):
         """Evaluate if the necessary arguments are present"""
-        pass
+        if not os.path.exists(args.yaml_file):
+            raise RuntimeError('File does not exist', args.yaml_file)
+
+        with open(args.yaml_file, 'r') as test:
+            test_config = yaml.load(test.read())
+
+        v = TestSchemaValidator(TEST_SCHEMA)
+        if not v.validate(test_config):
+            raise RuntimeError('Wrong test configuration', v.errors)
 
         # if args.repo:
             # repopath = os.path.join(os.curdir, 'test_repo')
