@@ -31,60 +31,7 @@ import collections
 from cerberus import Validator
 from pkg_resources import resource_filename
 
-
-def integer_convertible(field, value, error):
-    try:
-        int(value)
-    except ValueError:
-        error(field, "Value must be integer convertible")
-
-CONFIG_SCHEMA = {
-    'default_image': {
-        'type': 'dict',
-        'schema': {
-            'compressed': {'type': 'boolean'},
-            'device': {'type': 'string'},
-            'kernel': {'type': 'string'},
-            'rootfs': {'type': 'string'},
-            'image': {'type': 'string', 'nullable': True},
-            'patch': {'type': 'string', 'nullable': True},
-        }
-    },
-    'lava': {
-        'type': 'dict',
-        'schema': {
-            'server': {
-                'type': 'dict',
-                'schema': {
-                    'host': {'type': 'string'},
-                    'port': {'validator': integer_convertible},
-                    'user': {'type': 'string'},
-                    'token': {'type': 'string'},
-                    'jobs': {
-                        'type': 'dict',
-                        'schema': {
-                            'timeout': {'type': 'number'},
-                        },
-                    },
-                }
-            },
-            'publisher': {
-                'type': 'dict',
-                'schema': {
-                    'port': {'validator': integer_convertible},
-                }
-            }
-        }
-    },
-}
-
-
-class ConfigValidator(Validator):
-    """lavactl Configuration Validator"""
-
-    def __init__(self, *args, **kwargs):
-        super(ConfigValidator, self).__init__(*args, **kwargs)
-
+from lava_ctl.config.schemas import LAVACTL_SCHEMA
 
 class ConfigManager(object):
     """Handle the App's configuration values"""
@@ -129,7 +76,7 @@ class ConfigManager(object):
         self.validate()
 
     def validate(self):
-        if not self._validator.validate(self._config, CONFIG_SCHEMA):
+        if not self._validator.validate(self._config):
             raise RuntimeError('Invalid config parameters: %s' %
                                self._validator.errors)
 
@@ -156,7 +103,7 @@ class ConfigManager(object):
         self._config = self.load_file(self._config_file)
 
         # Schema validator
-        self._validator = ConfigValidator()
+        self._validator = Validator(LAVACTL_SCHEMA)
 
         # Override default configuration with the user defined configuration
         # file

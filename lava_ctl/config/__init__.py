@@ -1,1 +1,1 @@
-from config import ConfigManager, ConfigValidator
+from config import ConfigManager
