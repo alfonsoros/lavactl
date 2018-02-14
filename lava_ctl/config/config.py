@@ -48,7 +48,7 @@ class Config(object):
     you can access the value of 'c' by using the key 'a.b.c'
     """
 
-    def __init__(self, config={}, schema={}, logger=None):
+    def __init__(self, config={}, schema={}, filename=None, logger=None):
         """Config class initializer
 
         keyword arguments:
@@ -64,6 +64,10 @@ class Config(object):
         self._config = config
         self._schema = schema
         self._validator = Validator(self._schema)
+        self._config_file = filename
+
+        if self._config_file:
+            self.load()
 
     def get(self, key):
         """Return the value associated to the key
@@ -107,38 +111,55 @@ class Config(object):
             self._logger.error('wrong config key %s', key)
             raise KeyError('wrong config key', key)
 
+    def load(self, filename=None):
+        """Loads the configuration from the input file
+        keyword arguments:
+        filename -- a path to a YAML file with configuration information
+        """
+        path = self._config_file or filename
+        self._logger.debug("loading config from file: %s", path)
+        try:
+            with open(path, 'r') as src:
+                self._config = yaml.load(src)
+                self._validate()
+        except IOError, exc:
+            self._logger.error('Could not read from file %s', path)
+            raise exc
+
+        except yaml.YAMLError, exc:
+            self._logger.error("YAML Error with file: %s", filename)
+            raise exc
+
+    def write(self, filename=None):
+        """Write this configuration to a file
+        keyword arguments:
+        filename -- a path to a YAML file with configuration information
+        """
+        path = self._config_file or filename
+        self._logger.debug("writing config to file: %s", path)
+        try:
+            with open(path, 'w') as cf:
+                cf.write(yaml.dump(self._config))
+        except IOError, exc:
+            self._logger.error('Could not write to file %s', self._filename)
+            raise exc
+
     def _validate(self):
         if not self._validator.validate(self._config):
             self._logger.error('configuration error %s',
                                self._validator.errors)
             raise RuntimeError('wrong configuration', self._validator.errors)
 
+    def __repr__(self):
+        return yaml.dump(self._config)
+
 
 class ConfigManager(Config):
     """Handle the App's configuration values"""
 
-    def load_file(self, filename):
-        """Load configuration from a file"""
-        with open(filename, 'r') as src:
-            try:
-                return yaml.load(src)
-            except yaml.YAMLError, exc:
-                self.logger.error("YAML Error with file: %s", filename)
-                raise exc
-
-    def write(self):
-        with open(self._config_file, 'w') as cf:
-            cf.write(yaml.dump(self._config))
-
     def __init__(self, filename=None, logger=None):
-        self._config_file = filename or resource_filename(
+        config_file = filename or resource_filename(
             'lava_ctl', 'resources/lavactl_conf.yaml')
 
-        # Load static configuration
-        config = self.load_file(self._config_file)
-
         super(ConfigManager, self).__init__(
-            config=config, schema=LAVACTL_SCHEMA, logger=logger)
-
-    def __repr__(self):
-        return yaml.dump(self._config)
+            schema=LAVACTL_SCHEMA, filename=config_file, logger=logger)
