@@ -26,6 +26,12 @@
 FILE_URL_REGEX = '^https:\/\/[\w\-\.]+(:[0-9]+)?(\/[\w\-\.\/\+]*)?$'
 GIT_URL_REGEX = '^(https:\/\/|git:\/\/)?[@\w\-\.]+:?([0-9]+)?([\w\-\.\/\+]*)?$'
 
+from lava_ctl.lava.devices import SUPPORTED_DEVICES
+
+def supported_device(field, value, error):
+    if not value in SUPPORTED_DEVICES:
+        error(field, "Device %s not supported" % value)
+
 TEST_SCHEMA = {
     'source': {
         'type': 'dict',
@@ -34,7 +40,7 @@ TEST_SCHEMA = {
             'device': {
                 'required': True,
                 'type': 'string',
-                'supported_device': True,
+                'validator': supported_device,
             },
             'kernel': {
                 'required': True,

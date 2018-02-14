@@ -29,8 +29,9 @@ import yaml
 import shutil
 
 from lava_ctl.lava.jobs import Job, JobDefinition
-from lava_ctl.lava.test import Test, TestSchemaValidator
-from lava_ctl.lava.test.schema import TEST_SCHEMA
+from lava_ctl.lava.test import Test
+from lava_ctl.config.schemas import TEST_SCHEMA
+from lava_ctl.config import Config
 
 
 class Command(object):
@@ -52,45 +53,38 @@ class Command(object):
 
     def evaluate(self, args, config):
         """Evaluate if the necessary arguments are present"""
-        if not os.path.exists(args.yaml_file):
-            raise RuntimeError('File does not exist', args.yaml_file)
-
-        with open(args.yaml_file, 'r') as test:
-            test_config = yaml.load(test.read())
-
-        v = TestSchemaValidator(TEST_SCHEMA)
-        if not v.validate(test_config):
-            raise RuntimeError('Wrong test configuration', v.errors)
+        test_config = Config(schema=TEST_SCHEMA, filename=args.yaml_file,
+                             logger=self._logger)
 
         # if args.repo:
-            # repopath = os.path.join(os.curdir, 'test_repo')
-            # branch = 'master' if not args.branch else args.branch
+        # repopath = os.path.join(os.curdir, 'test_repo')
+        # branch = 'master' if not args.branch else args.branch
 
-            # import git
-            # repo = git.Repo.clone_from(args.repo, repopath, branch=branch)
+        # import git
+        # repo = git.Repo.clone_from(args.repo, repopath, branch=branch)
 
-            # if args.rev:
-                # gitcmd = repo.git
-                # gitcmd.checkout(args.rev)
+        # if args.rev:
+        # gitcmd = repo.git
+        # gitcmd.checkout(args.rev)
 
-            # args.yaml_file = os.path.join(repopath, args.yaml_file)
+        # args.yaml_file = os.path.join(repopath, args.yaml_file)
 
         # # Check if the file exists
         # if not os.path.exists(args.yaml_file):
-            # raise RuntimeError('File does not exist', args.yaml_file)
+        # raise RuntimeError('File does not exist', args.yaml_file)
 
         # with open(args.yaml_file) as testfile:
-            # test = yaml.load(testfile.read())
+        # test = yaml.load(testfile.read())
 
         # if args.repo:
-            # shutil.rmtree(repopath)
+        # shutil.rmtree(repopath)
 
         # self._logger.debug("test file content:\n%s",
-                           # yaml.dump(test, default_flow_style=False))
+        # yaml.dump(test, default_flow_style=False))
 
         # # Arguments contain image data
         # if not args.device:
-            # raise RuntimeError("--device is mandatory")
+        # raise RuntimeError("--device is mandatory")
 
         # meta = self.check_meta(vars(args))
 
@@ -99,8 +93,8 @@ class Command(object):
 
         # # Add the test information to the job
         # if 'tests' in test and len(test['tests']) > 0:
-            # for conf in test['tests']:
-                # job.add_test(Test(config=conf, logger=self._logger))
+        # for conf in test['tests']:
+        # job.add_test(Test(config=conf, logger=self._logger))
 
         # # Create a LAVA job definition from the available configuration
         # jobdef = JobDefinition(job=job, config=config, logger=self._logger)
@@ -109,11 +103,11 @@ class Command(object):
         # success = jobdef.submit(wait=not args.no_wait)
 
         # if success:
-            # self._logger.debug("Job finished successfully")
-            # sys.exit(0)
+        # self._logger.debug("Job finished successfully")
+        # sys.exit(0)
         # else:
-            # self._logger.error("Job finished with errors")
-            # sys.exit(1)
+        # self._logger.error("Job finished with errors")
+        # sys.exit(1)
 
     def __repr__(self):
         return 'Command(run)'
