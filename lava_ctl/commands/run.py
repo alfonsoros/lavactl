@@ -46,6 +46,8 @@ class Command(object):
         self.parser = subparsers.add_parser(
             'run', help='Run a LAVA test')
         self.parser.add_argument(
+            '-p', '--param', type=str, action='append', metavar='KEY=VALUE', help='modify test parameter')
+        self.parser.add_argument(
             'yaml_file', type=str, metavar='FILE', help='test description')
         self.parser.add_argument(
             '--no-wait', action='store_true', help='Don\'t wait for the job\'s result')
@@ -55,6 +57,15 @@ class Command(object):
         """Evaluate if the necessary arguments are present"""
         test_config = Config(schema=TEST_SCHEMA, filename=args.yaml_file,
                              logger=self._logger)
+
+        # Overwride/add config parameters
+        self._logger.debug('overriding paramerters: %s', args.param)
+        for param in args.param:
+          key, value = param.split('=')
+          test_config.set(key, value)
+
+        test_config.validate()
+        self._logger.debug('test order configuration: %s', test_config)
 
         # if args.repo:
         # repopath = os.path.join(os.curdir, 'test_repo')

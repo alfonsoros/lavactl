@@ -32,56 +32,62 @@ def supported_device(field, value, error):
     if not value in SUPPORTED_DEVICES:
         error(field, "Device %s not supported" % value)
 
-TEST_SCHEMA = {
-    'source': {
-        'type': 'dict',
+boot_from_kernel_and_rootfs = {
+    'kernel': {
         'required': True,
+        'type': 'string',
+        'regex': FILE_URL_REGEX,
+    },
+    'rootfs': {
+        'required': True,
+        'type': 'string',
+        'regex': FILE_URL_REGEX,
+    },
+    'rootfs_compressed': {
+        'required': False,
+        'type': 'boolean'
+    },
+}
+
+boot_from_wic_image = {
+    'url': {
+        'required': True,
+        'excludes': 'kernel',
+        'type': 'string',
+        'regex': FILE_URL_REGEX,
+    },
+    'patch': {
+        'ltype': 'dict',
         'schema': {
-            'device': {
+            'url': {
                 'required': True,
-                'type': 'string',
-                'validator': supported_device,
-            },
-            'kernel': {
-                'required': True,
-                'excludes': 'image',
-                'dependencies': 'rootfs',
                 'type': 'string',
                 'regex': FILE_URL_REGEX,
             },
-            'rootfs': {
+            'target': {
                 'required': True,
-                'excludes': 'image',
-                'dependencies': 'kernel',
                 'type': 'string',
-                'regex': FILE_URL_REGEX,
             },
-            'image': {
+            'partition': {
                 'required': True,
-                'excludes': 'kernel',
-                'type': 'string',
-                'regex': FILE_URL_REGEX,
-            },
-            'rootfs_compressed': {'type': 'boolean'},
-            'patch': {
-                'type': 'dict',
-                'schema': {
-                    'url': {
-                        'required': True,
-                        'type': 'string',
-                        'regex': FILE_URL_REGEX,
-                    },
-                    'target': {
-                        'required': True,
-                        'type': 'string',
-                    },
-                    'partition': {
-                        'required': True,
-                        'type': 'integer',
-                    },
-                }
+                'type': 'integer',
             },
         }
+    },
+}
+
+TEST_SCHEMA = {
+    'device': {
+        'required': True,
+        'type': 'string',
+        'validator': supported_device,
+    },
+    'image': {
+        'type': 'dict',
+        'oneof_schema': [
+            boot_from_kernel_and_rootfs,
+            # boot_from_wic_image,
+        ],
     },
     'test_repos': {
         'type': 'list',

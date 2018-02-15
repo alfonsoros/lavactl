@@ -26,7 +26,7 @@
 import copy
 import yaml
 import logging
-import collections
+from collections import defaultdict
 
 from cerberus import Validator
 from pkg_resources import resource_filename
@@ -61,7 +61,8 @@ class Config(object):
         self._log_extra = {'config': config, 'schema': schema}
         self._logger.debug(
             'config %(config)s with %(schema)s', extra=self._log_extra)
-        self._config = config
+        self._config = defaultdict(lambda: {})
+        self._config.update(config)
         self._schema = schema
         self._validator = Validator(self._schema)
         self._config_file = filename
@@ -106,7 +107,6 @@ class Config(object):
             self._logger.debug("setting %s to %s", key, value)
             conf[key] = value
             self._logger.debug("validating config", extra=self._log_extra)
-            self._validate()
         except (IndexError, KeyError):
             self._logger.error('wrong config key %s', key)
             raise KeyError('wrong config key', key)
@@ -120,8 +120,8 @@ class Config(object):
         self._logger.debug("loading config from file: %s", path)
         try:
             with open(path, 'r') as src:
-                self._config = yaml.load(src)
-                self._validate()
+                self._config.clear()
+                self._config.update(yaml.load(src))
         except IOError, exc:
             self._logger.error('Could not read from file %s', path)
             raise exc
@@ -137,6 +137,7 @@ class Config(object):
         """
         path = self._config_file or filename
         self._logger.debug("writing config to file: %s", path)
+        self.validate()
         try:
             with open(path, 'w') as cf:
                 cf.write(yaml.dump(self._config))
@@ -144,7 +145,7 @@ class Config(object):
             self._logger.error('Could not write to file %s', self._filename)
             raise exc
 
-    def _validate(self):
+    def validate(self):
         if not self._validator.validate(self._config):
             self._logger.error('configuration error %s',
                                self._validator.errors)
