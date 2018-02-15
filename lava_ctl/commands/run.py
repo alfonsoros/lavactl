@@ -58,7 +58,7 @@ class Command(object):
         test_config = Config(schema=TEST_SCHEMA, filename=args.yaml_file,
                              logger=self._logger)
 
-        # Overwride/add config parameters
+        # Overwride/add config parameters from command line
         self._logger.debug('overriding paramerters: %s', args.param)
         for param in args.param:
           key, value = param.split('=')
