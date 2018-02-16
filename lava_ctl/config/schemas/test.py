@@ -78,7 +78,7 @@ boot_from_wic_image = {
 
 TEST_SCHEMA = {
     'device': {
-        'required': True,
+        'required': False,
         'type': 'string',
         'validator': supported_device,
     },

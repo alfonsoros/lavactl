@@ -104,11 +104,29 @@ class Config(object):
         """
         try:
             access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
+
             keys = key.split('.')
-            parents, key = keys[:-1], keys[-1]
+            parents, last = keys[:-1], keys[-1]
             conf = reduce(access, parents, self._config)
             self._logger.debug("setting %s to %s", key, value)
-            conf[key] = value
+
+            # check value's schema type
+            key_schema = reduce(lambda c, k: c[k]['schema'], parents, self._schema)[last]
+            if key_schema['type'] is 'integer':
+                value = int(value)
+            elif key_schema['type'] is 'boolean':
+                if isinstance(value, str) and value in ['True', 'true', 'yes']:
+                    value = True
+                elif isinstance(value, str) and value in ['False', 'false', 'no']:
+                    value = False
+                else:
+                    value = bool(value)
+            elif key_schema['type'] is 'string':
+                value = str(value)
+            else:
+                raise NotImplementedError('Don\'t know how to convert to', key_schema['type'])
+
+            conf[last] = value
             self._logger.debug("validating config", extra=self._log_extra)
         except (IndexError, KeyError):
             self._logger.error('wrong config key %s', key)

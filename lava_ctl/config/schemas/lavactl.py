@@ -23,11 +23,6 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-def integer_convertible(field, value, error):
-    try:
-        int(value)
-    except ValueError:
-        error(field, "Value must be integer convertible")
 
 LAVACTL_SCHEMA = {
     'default_image': {
@@ -48,7 +43,7 @@ LAVACTL_SCHEMA = {
                 'type': 'dict',
                 'schema': {
                     'host': {'type': 'string'},
-                    'port': {'validator': integer_convertible},
+                    'port': {'type': 'integer'},
                     'user': {'type': 'string'},
                     'token': {'type': 'string'},
                     'jobs': {
@@ -62,7 +57,7 @@ LAVACTL_SCHEMA = {
             'publisher': {
                 'type': 'dict',
                 'schema': {
-                    'port': {'validator': integer_convertible},
+                    'port': {'type': 'integer'},
                 }
             }
         }
