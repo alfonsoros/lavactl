@@ -34,6 +34,9 @@ from pkg_resources import resource_filename
 from lava_ctl.config.schemas import LAVACTL_SCHEMA
 
 
+yaml.add_representer(defaultdict, yaml.representer.Representer.represent_dict)
+
+
 class Config(object):
     """Base class for a Configuration dictionary
 
@@ -127,7 +130,7 @@ class Config(object):
             raise exc
 
         except yaml.YAMLError, exc:
-            self._logger.error("YAML Error with file: %s", filename)
+            self._logger.error("YAML Error with file: %s", path)
             raise exc
 
     def write(self, filename=None):
