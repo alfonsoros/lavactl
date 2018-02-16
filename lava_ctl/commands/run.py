@@ -28,8 +28,10 @@ import sys
 import yaml
 import shutil
 
+from collections import defaultdict
+
 from lava_ctl.lava.jobs import Job, JobDefinition
-from lava_ctl.lava.test import Test
+from lava_ctl.lava.test import Test, TestSetsRepo
 from lava_ctl.config.schemas import TEST_SCHEMA
 from lava_ctl.config import Config
 
@@ -60,65 +62,44 @@ class Command(object):
 
         # Overwride/add config parameters from command line
         self._logger.debug('overriding paramerters: %s', args.param)
-        for param in args.param:
-          key, value = param.split('=')
-          test_config.set(key, value)
+        if args.param:
+            for param in args.param:
+                key, value = param.split('=')
+                test_config.set(key, value)
 
         test_config.validate()
         self._logger.debug('test order configuration: %s', test_config)
 
-        # if args.repo:
-        # repopath = os.path.join(os.curdir, 'test_repo')
-        # branch = 'master' if not args.branch else args.branch
+        test_results = []
 
-        # import git
-        # repo = git.Repo.clone_from(args.repo, repopath, branch=branch)
+        for repo_ref in test_config.get('test_repos'):
+            with TestSetsRepo(repo_ref) as test_sets:
+                for test_set in test_sets:
 
-        # if args.rev:
-        # gitcmd = repo.git
-        # gitcmd.checkout(args.rev)
+                    # TODO refactor job class
+                    conf = defaultdict(lambda: None)
+                    conf['device'] = test_config.get('device')
+                    conf.update(test_config.get('image'))
 
-        # args.yaml_file = os.path.join(repopath, args.yaml_file)
+                    job = Job(config=conf, logger=self._logger)
+                    for test in test_set:
+                        job.add_test(test)
 
-        # # Check if the file exists
-        # if not os.path.exists(args.yaml_file):
-        # raise RuntimeError('File does not exist', args.yaml_file)
+                    jobdef = JobDefinition(
+                        job=job, config=config, logger=self._logger)
 
-        # with open(args.yaml_file) as testfile:
-        # test = yaml.load(testfile.read())
+                    # Submit the job to the LAVA server
+                    success = jobdef.submit(wait=not args.no_wait)
 
-        # if args.repo:
-        # shutil.rmtree(repopath)
+                    if success:
+                        self._logger.debug("Job finished successfully")
+                    else:
+                        self._logger.error("Job finished with errors")
 
-        # self._logger.debug("test file content:\n%s",
-        # yaml.dump(test, default_flow_style=False))
+                    test_results.append(success)
 
-        # # Arguments contain image data
-        # if not args.device:
-        # raise RuntimeError("--device is mandatory")
-
-        # meta = self.check_meta(vars(args))
-
-        # # Create the minimal configuration to run the LAVA job
-        # job = Job(config=meta, logger=self._logger)
-
-        # # Add the test information to the job
-        # if 'tests' in test and len(test['tests']) > 0:
-        # for conf in test['tests']:
-        # job.add_test(Test(config=conf, logger=self._logger))
-
-        # # Create a LAVA job definition from the available configuration
-        # jobdef = JobDefinition(job=job, config=config, logger=self._logger)
-
-        # # Submit the job to the LAVA server
-        # success = jobdef.submit(wait=not args.no_wait)
-
-        # if success:
-        # self._logger.debug("Job finished successfully")
-        # sys.exit(0)
-        # else:
-        # self._logger.error("Job finished with errors")
-        # sys.exit(1)
+        # finish
+        sys.exit(0) if all(test_results) else sys.exit(1)
 
     def __repr__(self):
         return 'Command(run)'
