@@ -1,5 +1,10 @@
-job_name: qemu-x86-test
+{% extends 'include/base_lava.yaml' %}
+{% set device = qemu %}
+{% set name = job_name|default("qemu-x86-test") %}
+{% set prompt_msg = "root@qemux86:" %}
+{% set login_prompt_msg = "login:" %}
 
+{% block protocols %}
 {% if multinode %}
 protocols:
   lava-multinode:
@@ -20,42 +25,9 @@ context:
   arch: i386
   no_kvm: True
 {% endif %}
+{% endblock protocols %}
 
-timeouts:
-  job:
-    minutes: 60
-  action:
-    minutes: 10
-  connection:
-    minutes: 20
-
-priority: medium
-visibility: public
-
-actions:
-- deploy:
-{% for role in roles %}
-{% if loop.first %}
-    role:
-{% endif %}
-      - {{ role }}
-{% endfor %}
-    timeout:
-      minutes: 10
-    to: tmpfs
-    images:
-        kernel:
-          image_arg: -kernel {kernel} -append "console=ttyS0 root=/dev/hda rw"
-          url: {{ kernel_url }}
-        rootfs:
-          image_arg: -drive format=raw,file={rootfs}
-          url: {{ rootfs_url }}
-{% if compression %}
-          compression: gz
-{% endif %}
-    os: oe
-    root_partition: 1
-
+{% block boot %}
 - boot:
     role:
 {% if multinode %}
@@ -72,13 +44,4 @@ actions:
     auto_login:
       login_prompt: "login:"
       username: root
-
-{% if test %}
-{% for test in test_repos %}
-{% if test.inline %}
-{% include 'inline_test.yaml' %}
-{% else %}
-{% include 'test.yaml' %}
-{% endif %}
-{% endfor %}
-{% endif %}
+{% endblock boot %}
