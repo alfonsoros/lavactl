@@ -104,30 +104,12 @@ class Config(object):
         """
         try:
             access = lambda c, k: c[int(k)] if isinstance(c, list) else c[k]
-
             keys = key.split('.')
             parents, last = keys[:-1], keys[-1]
             conf = reduce(access, parents, self._config)
-            self._logger.debug("setting %s to %s", key, value)
+            conf[last] = self.__convert_to_schema_type(key, value)
+            self._logger.debug("%s set to %s", key, conf[last])
 
-            # check value's schema type
-            key_schema = reduce(lambda c, k: c[k]['schema'], parents, self._schema)[last]
-            if key_schema['type'] is 'integer':
-                value = int(value)
-            elif key_schema['type'] is 'boolean':
-                if isinstance(value, str) and value in ['True', 'true', 'yes']:
-                    value = True
-                elif isinstance(value, str) and value in ['False', 'false', 'no']:
-                    value = False
-                else:
-                    value = bool(value)
-            elif key_schema['type'] is 'string':
-                value = str(value)
-            else:
-                raise NotImplementedError('Don\'t know how to convert to', key_schema['type'])
-
-            conf[last] = value
-            self._logger.debug("validating config", extra=self._log_extra)
         except (IndexError, KeyError):
             self._logger.error('wrong config key %s', key)
             raise KeyError('wrong config key', key)
@@ -167,10 +149,36 @@ class Config(object):
             raise exc
 
     def validate(self):
+        """Validate the configuration structure with the schema"""
         if not self._validator.validate(self._config):
             self._logger.error('configuration error %s',
                                self._validator.errors)
             raise RuntimeError('wrong configuration', self._validator.errors)
+
+
+    def __convert_to_schema_type(self, key, value):
+        keys = key.split('.')
+        schema = reduce(lambda c, k: c[k]['schema'], keys[:-1], self._schema)
+        value_type = schema[keys[-1]]['type']
+
+        # Try to find the conversion function
+        conv_func = getattr(self, '_convert_to_' + value_type, None)
+        if conv_func and callable(conv_func):
+            return conv_func(value)
+        else:
+            raise NotImplementedError('Unknown conversion to', value_type)
+
+    def _convert_to_integer(self, value):
+        return int(value)
+
+    def _convert_to_string(self, value):
+        return str(value)
+
+    def _convert_to_boolean(self, value):
+        if isinstance(value, str):
+            return value not in ['False', 'false', 'no', 'n', '0', '', 'None']
+        else:
+            return bool(value)
 
     def __repr__(self):
         return yaml.dump(self._config)
