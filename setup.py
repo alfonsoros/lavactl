@@ -26,19 +26,21 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 import os
 from setuptools import setup, find_packages
 
-with open(os.path.join(os.path.dirname(__file__), 'VERSION')) as version_file:
-    version = version_file.read().strip()
+def read_version():
+    version_file_path = os.path.join(os.path.dirname(__file__), 'lava_ctl/VERSION')
+    with open(version_file_path) as version_file:
+        return version_file.read().strip()
 
 setup(
     name='lava-ctl',
-    version=version,
+    version=read_version(),
     author='Alfonso Ros',
     author_email='alfonso.ros-dos-santos@evosoft.com',
     description='LAVA CI setup tool',
 
     packages=find_packages(),
     include_package_data=True,
-    data_files=[('', ['VERSION'])],
+    data_files=[('', ['lava_ctl/VERSION'])],
     install_requires=[
         "zmq",
         "GitPython",
