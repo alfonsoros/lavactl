@@ -23,86 +23,98 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
 # LAVA Control
 
 [LAVA](https://www.linaro.org/initiatives/lava/) is a framework for testing 
-Linux images within different hardware devices. It offers the functionality 
-necessary for setting up a continuous integration process for the development 
-of custom Linux distributions. 
+Linux images among different hardware devices. It presents itself as a possible 
+solution for the continuous integration process of Embedded Linux systems.
 
-LAVA Control is a tool designed to help on the integration of such projects 
-with the LAVA framework. For that, LAVA Control tries to hide and default as 
-much configuration from the user as possible. The minimum parameters required 
-for running a hardware test are the URLs from where to get the Kernel and the 
-root file system, together with the corresponding device type.
+LAVA Control is a tool that aims to help on the management of the continuous 
+integration process that uses the LAVA framework. It does so through a single 
+`YAML` configuration file that can be added to your project which specifies 3 
+things:
 
-For example, you can write the following to a `test.yaml` file:
+* The URL where to get the image to be tested.
+* The device template to use for the device configuration.
+* The test suites to execute.
+
+Here is an example of the configuration files used by `lava-ctl`:
 
 ```yaml
+---
 image:
-  kernel: http://host/linux-kernel.bin
-  rootfs: http://host/root-filesystem.ext4
-  device: qemux86
+  kernel: http://my_artifacts/linux-kernel.bin
+  rootfs: http://my_artifacts/root-filesystem.ext4
+  rootfs_compressed: false
+device: qemux86
+test_repos:
+  - url: git@github.com:my_embedded_linux/test.git
+    branch: ssh_tests
+    tests:
+      - ssh/ssh.yaml
+      - ssh/scp.yaml
 ```
 
-and then simply call `lava-ctl.py` as follows:
+After configuring the tool, this file can be passed directly to `lava-ctl` and 
+start the tests execution.
 
 ```bash
-./lava-ctl.py run-test test.yaml
+lava-ctl run test.yaml
 ```
 
 ## Usage
 
-You can use this project in two different ways. You can either install
-`lava-ctl` as a python package or use it's docker image. To install it as a
-python package, you can simply clone this project and execute:
+Before using using this tool you have to set the corresponding configuration 
+to your LAVA setup. You can use this with the `lava-ctl config` command.
+
+Here is the list of the configuration parameters. 
+
+| Parameter             | Description                                                          |
+|-----------------------|----------------------------------------------------------------------|
+| `lava.server.host`    | IP or domain name of your LAVA master instance (default `localhost`) |
+| `lava.server.port`    | Port number of the LAVA service (default `80`)                       |
+| `lava.server.user`    | LAVA user name that will be used by the tool to send the jobs        |
+| `lava.server.token`   | LAVA user's token used for authentication with the master            |
+| `lava.publisher.port` | Port number of the LAVA publisher (used for notifications)           |
+
+
+You can set each parameters permanently with the [config command](#config-command) like this:
 
 ```sh
-python setup.py install
+lava-ctl config --set lava.server.host=192.168.0.10
 ```
 
-This will provide the `lava-ctl` command to your path. After this you should be
-able to execute:
+or use the `-p` flag to override them when executing `lava-ctl` like this:
 
 ```sh
-lava-ctl --help
-```
-
-If you don't want to install `lava-ctl` as a python package and you have docker
-installed, you can pull the docker image:
-
-```
-docker pull docker.web-of-systems.com/lava-ctl
+lava-ctl -p lava.server.host=192.168.0.10 run tests/qemux86.yaml
 ```
 
 ## Commands
 
-| Command                              | Description                                                     |
-|--------------------------------------|-----------------------------------------------------------------|
-| [submit-job](#submitting-a-lava-job) | Submits a LAVA job definition from a file                       |
-| [run-test](#running-a-test-job)      | Test an image                                                   |
+| Command                   | Description                            |
+|---------------------------|----------------------------------------|
+| [run](#run-command)       | Test an image                          |
+| [config](#config-command) | Test an image                          |
+| submit-job                | Same as `lava-tool submit-job` command |
+| version                   | Prints out the `lava-ctl` version      |
 
 
-## Submitting a LAVA job
-
-This command is equivalent to the `lava-tool submit-job` command. With this 
-command you can specify a LAVA Job definition from a file and submit it to the 
-LAVA master. Please refer to the [linaro documentation](https://validation.linaro.org/static/docs/v2/first-job.html) on 
-how to write these job definitions.
-
-```bash
-lava-ctl submit-job job.yaml
-```
-
-## Running a Test Job
+## Run Command
 
 LAVA Control defines a YAML schema to represent an arbitrary number of tests
-to be applied inside a single image. For example, one can write a very simple
-test inside a YAML file `test.yaml` with the following content:
+to be applied inside a single image. 
 
 ```yaml
 ---
-tests:
-  - name: 'emtpy-file-creation'
-    steps:
-    - lava-test-case touch-file --shell touch example.txt
+image:
+  kernel: http://my_artifacts/linux-kernel.bin
+  rootfs: http://my_artifacts/root-filesystem.ext4
+  rootfs_compressed: false
+device: qemux86
+test_repos:
+  - url: git@github.com:my_embedded_linux/test.git
+    branch: ssh_tests
+    tests:
+      - ssh/ssh.yaml
+      - ssh/scp.yaml
 ```
 
 The test will check if we can create file inside the image. This type of test
@@ -124,10 +136,11 @@ You can also version-control the `test.yaml` file and simply input the reference
 lava-ctl run-test --image qemu-latest --repo git@host/me/my_test_repo.git test.yaml
 ```
 
-## Configuration
+## Config Command
 
-You can find the default configuration in the file `lava_ctl/resources/default_conf.yaml`. In 
-case you need a particular configuration, these are the settings available:
+The `config` command allows you to either `--set` or `--get` the configuration 
+parameters listed in the [usage section](#usage).  Here is the default 
+configuration file installed with `lava-ctl`:
 
 ```yaml
 ---
@@ -148,17 +161,24 @@ default_image:
   compressed: false  #State whether the rootfs image is compressed
 ```
 
-You can overwrite this configuration with your own one by giving the path to 
-your configuration file with the `-c` flag. For example:
+You can override the parameters using _dot-notation_ to access the particular 
+keys. For example, if you want to set the `timeout` parameter for the LAVA jobs 
+to `1000` seconds, you can run:
 
 ```
-lava-ctl -c /path/to/my/config.cfg upload-image --kernel kernel.bin --rootfs filesystem.ext4.gz
+lava-ctl config --set lava.server.jobs.timeout=1000
+```
+
+You can also overwrite the entire configuration with your own one by giving the 
+path to your configuration file with the `-c` flag. For example:
+
+```
+lava-ctl -c /path/to/my/config.yaml run my_test.yaml
 ```
 
 It is also possible to overwrite individual parameters using the `-p` 
-flag. To specify parameters, we use the dot-notation. For example, to 
-specify the LAVA user name, you can run:
+flag. For example, to specify the LAVA user name, you can run:
 
 ```
-lava-ctl -p lava.server.user=myuser upload-image --kernel kernel.bin --rootfs filesystem.ext4.gz
+lava-ctl -p lava.server.user=myuser run my_test.yaml
 ```

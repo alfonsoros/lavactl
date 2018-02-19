@@ -24,6 +24,7 @@
 #
 
 import yaml
+import lava_ctl
 
 
 class Command(object):
@@ -36,29 +37,18 @@ class Command(object):
     def add_arguments(self, subparsers):
         """Define the arguments of the command"""
         self.parser = subparsers.add_parser(
-            'config', help='Manages the lavactl configuration')
-        self.parser.add_argument(
-            '--set', type=str, metavar="PARAM=VALUE", help='Set a configuration paramerter')
-        self.parser.add_argument(
-            '--get', type=str, metavar="PARAM", help='Get the value of the parameter')
+            'version', help='Manages the lavactl configuration')
         self.parser.set_defaults(evaluate=self.evaluate)
 
     def evaluate(self, args, config):
         """Evaluate if the necessary arguments are present"""
-
-        if args.set:
-            config.set(*(args.set.split('=')))
-            config.write()
-        elif args.get:
-            print "%s=%s" % (args.get, config.get(args.get))
-        else:
-            print config
+        print lava_ctl.__version__
 
     def __repr__(self):
-        return 'Command(submit-job)'
+        return 'Command(version)'
 
     def __str__(self):
-        return 'Command(submit-job)'
+        return 'Command(version)'
 
     def __unicode__(self):
-        return u'Command(submit-job)'
+        return u'Command(version)'
