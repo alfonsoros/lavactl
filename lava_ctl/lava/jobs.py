@@ -34,7 +34,7 @@ import tempfile
 import yaml
 
 from progress.bar import Bar
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from jinja2 import Environment, PackageLoader, TemplateNotFound
 
 from lava_ctl.config import ConfigManager
 from lava_ctl.lava.server import LavaServer
