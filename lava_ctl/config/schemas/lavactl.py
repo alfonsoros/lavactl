@@ -33,7 +33,6 @@ LAVACTL_SCHEMA = {
             'kernel': {'type': 'string'},
             'rootfs': {'type': 'string'},
             'image': {'type': 'string', 'nullable': True},
-            'patch': {'type': 'string', 'nullable': True},
         }
     },
     'lava': {

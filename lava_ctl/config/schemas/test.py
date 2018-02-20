@@ -56,24 +56,6 @@ boot_from_wic_image = {
         'type': 'string',
         'regex': FILE_URL_REGEX,
     },
-    'patch': {
-        'ltype': 'dict',
-        'schema': {
-            'url': {
-                'required': True,
-                'type': 'string',
-                'regex': FILE_URL_REGEX,
-            },
-            'target': {
-                'required': True,
-                'type': 'string',
-            },
-            'partition': {
-                'required': True,
-                'type': 'integer',
-            },
-        }
-    },
 }
 
 TEST_SCHEMA = {

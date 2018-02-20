@@ -49,7 +49,6 @@ class Job(object):
     - device: device type where to run the job
     if device is iot2000:
         - image URL: from where to download the image file
-        - patch URL: from where to download the patch file
     otherwise:
         - kernel URL: from where to download the kernel file
         - rootfs URL: from where to download the root file system
@@ -65,7 +64,6 @@ class Job(object):
         self._rootfs = config['rootfs']
         self._device = config['device']
         self._image = config['image']
-        self._patch = config['patch']
 
         if 'compressed' in config:
             self._compressed = config['compressed']
@@ -83,10 +81,6 @@ class Job(object):
     @property
     def image(self):
         return self._image
-
-    @property
-    def patch(self):
-        return self._patch
 
     @property
     def device(self):
@@ -165,7 +159,6 @@ class JobDefinition(object):
             context['kernel_url'] = job.kernel
             context['rootfs_url'] = job.rootfs
             context['image_url'] = job.image
-            context['patch_url'] = job.patch
             context['compression'] = job.compressed
             context['multinode'] = len(roles) > 0
             context['roles'] = roles
