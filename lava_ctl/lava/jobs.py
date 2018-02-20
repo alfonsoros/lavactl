@@ -34,7 +34,7 @@ import tempfile
 import yaml
 
 from progress.bar import Bar
-from jinja2 import Environment, PackageLoader, TemplateNotFound
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 from lava_ctl.config import ConfigManager
 from lava_ctl.lava.server import LavaServer
@@ -142,7 +142,7 @@ class JobDefinition(object):
         # Try to instantiate a LAVA definition using the configuration
         # parameters
         elif job:
-            env = Environment(loader=PackageLoader('lava_ctl.lava.devices'))
+            env = Environment(loader=PackageLoader('lava_ctl.lava.devices', 'templates'))
 
             try:
                 device = env.get_template(job.device + '.yaml')

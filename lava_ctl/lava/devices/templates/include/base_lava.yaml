@@ -95,9 +95,9 @@ actions:
 {% if test %}
 {% for test in test_repos %}
 {% if test.inline %}
-{% include 'inline_test.yaml' %}
+{% include 'include/inline_test.yaml' %}
 {% else %}
-{% include 'test.yaml' %}
+{% include 'include/test.yaml' %}
 {% endif %}
 {% endfor %}
 {% endif %}
