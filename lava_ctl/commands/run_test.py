@@ -52,8 +52,6 @@ class Command(object):
         self.parser.add_argument(
             '--image', type=str, help='image file')
         self.parser.add_argument(
-            '--patch', type=str, help='patch file')
-        self.parser.add_argument(
             '--repo', type=str, metavar='GIT URL', help='git repo URL')
         self.parser.add_argument(
             '--rev', type=str, metavar='REV HASH', help='commit\'s hash')
@@ -70,8 +68,7 @@ class Command(object):
         if 'device' not in meta:
             raise RuntimeError('Missing job configuration', ['device'])
 
-        REQUIRED = ['image', 'patch'] if meta[
-            'device'] == 'iot2000' else ['kernel', 'rootfs']
+        REQUIRED = ['image'] if meta['device'] == 'iot2000' else ['kernel', 'rootfs']
         missing = [p for p in REQUIRED if (p not in meta or meta[p] is None)]
         if len(missing) > 0:
             raise RuntimeError('Missing job configuration', missing)
@@ -84,7 +81,6 @@ class Command(object):
             meta['rootfs'] = None
         else:
             meta['image'] = None
-            meta['patch'] = None
 
         return meta
 

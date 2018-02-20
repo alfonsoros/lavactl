@@ -50,11 +50,6 @@ actions:
     image:
       url: {{ image_url }}
       root_partition: 1
-{% if patch_url %}
-    patch:
-      url: {{ patch_url }}
-      dst: '/loader/entries/boot.conf'
-      partition: 0
 {% endif%}
 {% elif kernel_url and rootfs_url %}
     images:
