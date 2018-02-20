@@ -102,7 +102,7 @@ actions:
 {% if test.inline %}
 {% include 'inline_test.yaml' %}
 {% else %}
-{% include 'test.yaml' %}
+{% include 'include/test.yaml' %}
 {% endif %}
 {% endfor %}
 {% endif %}
