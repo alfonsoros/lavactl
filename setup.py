@@ -50,6 +50,7 @@ setup(
         "progress",
         "cerberus",
         "PyYAML",
+        "terminaltables",
     ],
     classifiers=["License :: OSI Approved :: MIT License",],
 
