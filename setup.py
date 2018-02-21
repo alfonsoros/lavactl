@@ -38,6 +38,7 @@ setup(
     author_email='alfonso.ros-dos-santos@evosoft.com',
     description='LAVA CI setup tool',
 
+    license="MIT",
     packages=find_packages(),
     include_package_data=True,
     data_files=[('', ['lava_ctl/VERSION'])],
@@ -49,7 +50,9 @@ setup(
         "progress",
         "cerberus",
         "PyYAML",
+        "terminaltables",
     ],
+    classifiers=["License :: OSI Approved :: MIT License",],
 
     scripts=['bin/lava-ctl'],
     zip_safe=False
