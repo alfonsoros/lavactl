@@ -205,10 +205,24 @@ class LavaServer(object):
 
     def check_tests_results(self, job):
         """Check if all the tests of a job are passed"""
-        report = yaml.load(self._rpc.results.get_testjob_results_yaml(job))
-        results = [test.get('result') for test in report]
+
+        self._logger.info("=== BEGIN TEST REPORT ===")
+        if isinstance(job, list):
+            jid = lambda id: sum([int(x) for x in id.split('.')])
+            self._logger.info("jobs output URLs:")
+            for id in job:
+                self._logger.info("%s: %s/scheduler/job/%s", id, self._base_url, jid(id))
+        else:
+            self._logger.info("job output URL:")
+            self._logger.info("%s: %s/scheduler/job/%s", job, self._base_url, job)
+
+        yaml_report = self._rpc.results.get_testjob_results_yaml(job)
+        self._logger.info("report:\n%s", yaml_report)
+
+        results = [test.get('result') for test in yaml.load(yaml_report)]
         self._logger.info("PASSED %d", results.count('pass'))
         self._logger.info("FAILED %d", results.count('fail'))
+        self._logger.info("=== END TEST REPOST ===")
         return all(result == "pass" for result in results)
 
     def submit(self, job_definition, wait=True):
