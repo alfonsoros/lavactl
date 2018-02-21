@@ -41,6 +41,7 @@ import urllib2
 import stat
 
 from progress.bar import Bar
+from terminaltables import AsciiTable
 
 from lava_ctl.config import ConfigManager
 from lava_ctl.utils import timeout, TimeoutError
@@ -62,8 +63,9 @@ class JobListener(object):
         self._sub.setsockopt(zmq.SUBSCRIBE, b"")
         self._sub.connect(url)
 
-    def wait(self, job, seconds=None):
+    def wait(self, job_list, seconds=None):
         def loop():
+            status = dict([(id, None) for id in job_list])
             while True:
                 try:
                     msg = self._sub.recv_multipart()
@@ -74,16 +76,16 @@ class JobListener(object):
                         data, default_flow_style=False))
 
                     # filter message from different job
-                    if "job" not in data or job != data["job"]:
-                        continue
+                    if "job" in data and data["job"] in job_list:
+                        status[data["job"]] = data["status"]
+                        self._logger.debug(
+                            "Job ID %s -- status: %s", data["job"], data["status"])
 
-                    status = data["status"]
-                    self._logger.debug("Job ID %s -- status: %s", job, status)
                 except Exception:
                     status = None
 
-                if status and status in self.FINISHED_JOB_STATUS:
-                    return True if status == "Complete" else False
+                if all([s in self.FINISHED_JOB_STATUS for s in status.values()]):
+                    return all([s == "Complete" for s in status.values()])
 
         try:
             wait = timeout(seconds=seconds)(loop)
@@ -203,27 +205,30 @@ class LavaServer(object):
                                err.errcode, err.errmsg)
             raise err
 
-    def check_tests_results(self, job):
+    def check_tests_results(self, job_list):
         """Check if all the tests of a job are passed"""
-
         self._logger.info("=== BEGIN TEST REPORT ===")
-        if isinstance(job, list):
-            jid = lambda id: sum([int(x) for x in id.split('.')])
-            self._logger.info("jobs output URLs:")
-            for id in job:
-                self._logger.info("%s: %s/scheduler/job/%s", id, self._base_url, jid(id))
-        else:
-            self._logger.info("job output URL:")
-            self._logger.info("%s: %s/scheduler/job/%s", job, self._base_url, job)
+        success = []
+        for id in job_list:
+            self._logger.info("%s: %s/scheduler/job/%s",
+                              id, self._base_url, id)
+            yaml_report = self._rpc.results.get_testjob_results_yaml(id)
 
-        yaml_report = self._rpc.results.get_testjob_results_yaml(job)
-        self._logger.info("report:\n%s", yaml_report)
+            results_table = [['Test Suite', 'Test Name', 'Result']]
+            for test in yaml.load(yaml_report):
+                results_table.append(
+                    [test['suite'], test['name'], test['result']])
+            table = AsciiTable(results_table)
+            self._logger.info("Results Table:\n%s", table.table)
 
-        results = [test.get('result') for test in yaml.load(yaml_report)]
-        self._logger.info("PASSED %d", results.count('pass'))
-        self._logger.info("FAILED %d", results.count('fail'))
+            results = [row[2] for row in results_table]
+            self._logger.info("PASSED %d", results.count('pass'))
+            self._logger.info("FAILED %d", results.count('fail'))
+
+            success.append(all(result == "pass" for result in results))
+
         self._logger.info("=== END TEST REPOST ===")
-        return all(result == "pass" for result in results)
+        return all(success)
 
     def submit(self, job_definition, wait=True):
         """Submit a job to the LAVA server"""
@@ -232,27 +237,30 @@ class LavaServer(object):
         if not job_id:
             self._logger.error("Error at submitting the LAVA job")
             raise LavaServerError("Couldn't submit the job to the LAVA master")
-        else:
-            self._logger.info("Successfully submitted job -- id: %s", job_id)
 
-            if isinstance(job_id, list):
-                baseid = int(float(job_id[0]))
-                for i in xrange(len(job_id)):
-                    self._logger.info("Job %s output:\n%s/scheduler/job/%s",
-                                      job_id[i], self._base_url, baseid + i)
-            else:
-                self._logger.info("Job output:\n%s/scheduler/job/%s",
-                                  self._base_url, job_id)
+        self._logger.info("Successfully submitted job -- id: %s", job_id)
 
+        # Log the job urls
+        job_list = []
         if isinstance(job_id, list):
-            job_id = int(float(job_id[0]))
+            jid = lambda id: sum([int(x) for x in id.split('.')])
+            self._logger.info("jobs output URLs:")
+            for id in job_id:
+                self._logger.info("%s: %s/scheduler/job/%s",
+                                  id, self._base_url, jid(id))
+            job_list = [jid(x) for x in job_id]
+        else:
+            self._logger.info("job output URL:")
+            self._logger.info("%s: %s/scheduler/job/%s",
+                              job_id, self._base_url, job_id)
+            job_list.append(job_id)
 
         if wait:
             listener = JobListener(self._pub_url, logger=self._logger)
-            success = listener.wait(job_id, seconds=self._timeout)
-            return success and self.check_tests_results(job_id)
-        else:
-            return True
+            success = listener.wait(job_list, seconds=self._timeout)
+            return success and self.check_tests_results(job_list)
+
+        return True
 
     def status(self, job_id):
         """Return the status of the corresponding job ID"""
