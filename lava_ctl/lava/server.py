@@ -259,8 +259,6 @@ class LavaServer(object):
             listener = JobListener(self._pub_url, logger=self._logger)
             success = listener.wait(job_list, seconds=self._timeout)
 
-            import ipdb
-            ipdb.set_trace()
             return success and self.check_tests_results(job_list)
 
         return True
