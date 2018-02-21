@@ -221,7 +221,7 @@ class LavaServer(object):
             table = AsciiTable(results_table)
             self._logger.info("Results Table:\n%s", table.table)
 
-            results = [row[2] for row in results_table]
+            results = [row[2] for row in results_table[1:]]
             self._logger.info("PASSED %d", results.count('pass'))
             self._logger.info("FAILED %d", results.count('fail'))
 
@@ -258,6 +258,9 @@ class LavaServer(object):
         if wait:
             listener = JobListener(self._pub_url, logger=self._logger)
             success = listener.wait(job_list, seconds=self._timeout)
+
+            import ipdb
+            ipdb.set_trace()
             return success and self.check_tests_results(job_list)
 
         return True
