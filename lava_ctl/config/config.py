@@ -159,13 +159,15 @@ class Config(object):
     def __convert_to_schema_type(self, key, value):
         keys = key.split('.')
         schema = self._schema
-        for k in keys[:-1]:
-            schema = schema[k]
+        schema = schema[keys[0]]
+        for k in keys[1:]:
             if not 'schema' in schema:
-                schema = schema['oneof'][0]['schema']
+                matches = [s for s in schema['oneof'] if k in s['schema']]
+                schema = matches[0]['schema']
             else:
                 schema = schema['schema']
-        value_type = schema[keys[-1]]['type']
+            schema = schema[k]
+        value_type = schema['type']
 
         # Try to find the conversion function
         conv_func = getattr(self, '_convert_to_' + value_type, None)
