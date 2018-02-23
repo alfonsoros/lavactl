@@ -1,5 +1,5 @@
 {% extends 'include/base_lava.yaml' %}
-{% set device = iot2000-usb %}
+{% set device = "iot2000-usb" %}
 {% set name = job_name|default("iot2000-test") %}
 {% set prompt_msg = "root@iot2000-ebs:" %}
 {% set login_prompt_msg = "iot2000-ebs login:" %}

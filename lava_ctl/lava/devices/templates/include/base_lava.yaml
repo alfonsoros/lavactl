@@ -85,7 +85,7 @@ actions:
       username: root
 {% if shutdown_message %}
     parameters:
-      shutdown-message: {{ shutdown_message }}
+      shutdown-message: "{{ shutdown_message }}"
 {% endif %}
 {% endblock boot %}
 
