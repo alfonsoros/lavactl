@@ -61,8 +61,8 @@ lava-ctl run test.yaml
 
 ## Usage
 
-Before using using this tool you have to set the corresponding configuration 
-to your LAVA setup. You can use this with the `lava-ctl config` command.
+Before using using this tool you have to input the corresponding configuration 
+of your LAVA setup. You can do this with the [onfig command](#config-command).
 
 Here is the list of the configuration parameters. 
 
@@ -100,7 +100,7 @@ lava-ctl -p lava.server.host=192.168.0.10 run tests/qemux86.yaml
 ## Run Command
 
 LAVA Control defines a YAML schema to represent an arbitrary number of tests
-to be applied inside a single image. 
+to be applied to a particular Linux image. 
 
 ```yaml
 ---
@@ -117,24 +117,33 @@ test_repos:
       - ssh/scp.yaml
 ```
 
-The test will check if we can create file inside the image. This type of test
-is known as _inline_ test in the LAVA documentation because we are specifying
-the commands to run in the test directly.
-
-We can use `lava-ctl` to run this tests in a image that we have already
-uploaded to the LAVA master using the `lava-ctl upload-image` command. Let's
-suppose that we named that image 'qemu-latest' using the `--prefix` flag. To
-run this test in the 'qemu-latest' image, we can simply execute:
+Currently, this tool only support `Git` as the SVC for the tests. You can see 
+in the configuration that a `Git` repository is being referenced. This is the 
+repository that contains the test definitions. You can specify a `branch` and 
+also a specific `revision` inside that branch. In this example, we want to run 
+the tests for checking the `ssh` utilities in the image. We can run this test 
+using the [run command](#run-command) as follows:
 
 ```sh
-lava-ctl run-test --image qemu-latest test.yaml
+lava-ctl run test.yaml
 ```
 
-You can also version-control the `test.yaml` file and simply input the reference to the git repository:
+Additionally, you can verride _dynamically_ with the `-p` flag any of the test 
+parameters. This is particularly useful when holding temporary artifacts for 
+testing that are not statically available. For example, obviate the `image` 
+section in the `test.yaml` file and input those parameters through the command 
+line like this:
 
 ```sh
-lava-ctl run-test --image qemu-latest --repo git@host/me/my_test_repo.git test.yaml
+lava-ctl run
+  -p image.kernel=http://kernel/url/
+  -p image.rootfs=http://rootfs/url/  
+  -p image.rootfs_compressed=yes
+  test.yaml
 ```
+
+Refer to the [test definition](#test-definition) section for more information 
+about how to define tests.
 
 ## Config Command
 
@@ -181,4 +190,61 @@ flag. For example, to specify the LAVA user name, you can run:
 
 ```
 lava-ctl -p lava.server.user=myuser run my_test.yaml
+```
+
+# Test Definition
+
+The test definition is specified in a single using the `YAML` format. Each test 
+file can have an arbitrary number of test, where each test can be of two kinds, 
+`inline` or `repository`. For `inline` tests, you have to only specify the 
+`name` of the test  and the `steps` corresponding to the actions to run.  
+The commands that you can specify in the `steps` section correspond to the 
+exact same used by the LAVA framework on they [Shell 
+Definition](https://validation.linaro.org/static/docs/v2/writing-tests.html#lava-test-shell-definition) 
+tests.
+
+Here is an example for the `ssh.yaml` test:
+
+```yaml
+---
+tests:   
+  - name: 'ssh-server'
+    role:
+      - server
+    steps:
+      - ip=$(ifconfig eth0 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://')
+      - echo $ip
+      - lava-send ipv4 ip=$ip
+  - name: 'ssh-client'
+    role:
+      - client
+    steps:
+      - lava-wait ipv4
+      - cat /tmp/lava_multi_node_cache.txt
+      - ip=$(cat /tmp/lava_multi_node_cache.txt | cut -d = -f 2)
+      - lava-test-case ssh --shell ssh -o "StrictHostKeyChecking=no"
+      -q $ip exit
+```
+
+In this example, in addition to the `name` and `steps` sections, you can
+specify the optional `role`field when you are running _multinode_ tests. In 
+this case, two instances of the image will fire up, one with the role `server` 
+and the other one with the role `client`. Each of these will run their 
+corresponding `step` section separately.
+
+For `repository` tests, instead of the `steps` section, you have to specify a 
+`repo` URL with an optional `revision` and `params` fields. The repository 
+being referenced by this test must follow the instructions of the [LAVA tests 
+using 
+SVC](https://validation.linaro.org/static/docs/v2/test-repositories.html). Here 
+is an example:
+
+```yaml
+---
+tests:
+  - name: 'multinode'
+    repo: https://git.linaro.org/lava-team/lava-functional-tests.git
+    revision: ecffec7623485722796e654e9213b8196a8feab5
+    params:
+      - SOME_ENV: 42
 ```

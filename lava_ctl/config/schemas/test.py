@@ -68,7 +68,7 @@ TEST_SCHEMA = {
         'type': 'dict',
         'oneof_schema': [
             boot_from_kernel_and_rootfs,
-            # boot_from_wic_image,
+            boot_from_wic_image,
         ],
     },
     'test_repos': {
