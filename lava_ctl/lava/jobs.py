@@ -67,8 +67,10 @@ class Job(object):
 
         if 'compressed' in config:
             self._compressed = config['compressed']
-        elif 'rootfs' in config:
+        elif self.rootfs is not None:
             self._compressed = self.rootfs.endswith('.gz')
+        else:
+            self._compressed = None
 
     @property
     def kernel(self):
