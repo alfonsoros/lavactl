@@ -63,7 +63,7 @@ class Job(object):
         self._kernel = config['kernel']
         self._rootfs = config['rootfs']
         self._device = config['device']
-        self._image = config['image']
+        self._image = config['url']
 
         if 'compressed' in config:
             self._compressed = config['compressed']
