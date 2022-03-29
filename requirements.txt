@@ -19,7 +19,7 @@ ipython-genutils==0.2.0
 Jinja2==2.9.6
 jsonschema==2.6.0
 MarkupSafe==1.0
-paramiko==2.2.1
+paramiko==2.10.1
 pathlib==1.0.1
 pathlib2==2.3.0
 pexpect==4.2.1
